@@ -29,6 +29,7 @@ def build_filter_conditions(
     devices: Optional[List[str]] = None,
     item_types: Optional[List[str]] = None,
     playback_methods: Optional[List[str]] = None,
+    search: Optional[str] = None,
 ) -> tuple[str, list]:
     """
     构建通用的筛选条件
@@ -82,6 +83,11 @@ def build_filter_conditions(
         placeholders = ",".join(["?" for _ in playback_methods])
         conditions.append(f"PlaybackMethod IN ({placeholders})")
         params.extend(playback_methods)
+
+    # 搜索关键词筛选
+    if search and search.strip():
+        conditions.append("ItemName LIKE ?")
+        params.append(f"%{search.strip()}%")
 
     where_clause = " AND ".join(conditions) if conditions else "1=1"
     return where_clause, params
@@ -606,13 +612,47 @@ async def get_now_playing():
 
 
 @router.get("/recent")
-async def get_recent_plays(limit: int = Query(default=20, ge=1, le=100)):
+async def get_recent_plays(
+    limit: int = Query(default=20, ge=1, le=100),
+    days: Optional[int] = Query(default=None, ge=1, le=365, description="天数范围，不传则查询全部"),
+    start_date: Optional[str] = Query(default=None, description="开始日期 YYYY-MM-DD"),
+    end_date: Optional[str] = Query(default=None, description="结束日期 YYYY-MM-DD"),
+    users: Optional[str] = Query(default=None, description="用户ID列表，逗号分隔"),
+    clients: Optional[str] = Query(default=None, description="客户端列表，逗号分隔"),
+    devices: Optional[str] = Query(default=None, description="设备列表，逗号分隔"),
+    item_types: Optional[str] = Query(default=None, description="媒体类型列表，逗号分隔"),
+    playback_methods: Optional[str] = Query(default=None, description="播放方式列表，逗号分隔"),
+    search: Optional[str] = Query(default=None, description="搜索关键词，匹配内容名称"),
+):
     """获取最近播放记录"""
     user_map = await user_service.get_user_map()
-    duration_filter = get_duration_filter()
     datetime_col = local_datetime("DateCreated")
-    # 去掉开头的 " AND "
-    where_clause = f"WHERE {duration_filter[5:]}" if duration_filter else ""
+
+    # 解析筛选参数
+    user_list = users.split(",") if users else None
+    client_list = clients.split(",") if clients else None
+    device_list = devices.split(",") if devices else None
+    item_type_list = item_types.split(",") if item_types else None
+    playback_method_list = playback_methods.split(",") if playback_methods else None
+
+    # 构建筛选条件
+    where_clause, params = build_filter_conditions(
+        days=days if not start_date and not end_date else None,
+        start_date=start_date,
+        end_date=end_date,
+        users=user_list,
+        clients=client_list,
+        devices=device_list,
+        item_types=item_type_list,
+        playback_methods=playback_method_list,
+        search=search,
+    )
+
+    # 添加 limit 参数
+    params.append(limit)
+
+    # 获取播放时长过滤条件
+    duration_filter = get_duration_filter()
 
     async with get_playback_db() as db:
         async with db.execute(f"""
@@ -627,10 +667,10 @@ async def get_recent_plays(limit: int = Query(default=20, ge=1, le=100)):
                 PlayDuration,
                 PlaybackMethod
             FROM PlaybackActivity
-            {where_clause}
+            WHERE {where_clause}{duration_filter}
             ORDER BY DateCreated DESC
             LIMIT ?
-        """, (limit,)) as cursor:
+        """, params) as cursor:
             data = []
             async for row in cursor:
                 user_id = row[1] or ""

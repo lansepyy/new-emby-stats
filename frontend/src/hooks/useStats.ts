@@ -262,15 +262,16 @@ export function useDevices(params: FilterParams) {
   return { data, loading, error, refetch: fetch }
 }
 
-export function useRecent(limit = 48) {
+export function useRecent(params: FilterParams, limit = 48) {
   const [data, setData] = useState<RecentData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const paramsKey = serializeParams(params)
 
   const fetch = useCallback(async () => {
     setLoading(true)
     try {
-      const result = await api.getRecent(limit)
+      const result = await api.getRecent(params, limit)
       setData(result)
       setError(null)
     } catch (e) {
@@ -278,7 +279,8 @@ export function useRecent(limit = 48) {
     } finally {
       setLoading(false)
     }
-  }, [limit])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsKey, limit])
 
   useEffect(() => {
     fetch()

@@ -82,8 +82,8 @@ export const api = {
   getDevices: (params: FilterParams = {}): Promise<DevicesData> =>
     fetchAPI('/devices', params),
 
-  getRecent: (limit = 48): Promise<RecentData> =>
-    fetchAPI('/recent', { limit: String(limit) }),
+  getRecent: (params: FilterParams = {}, limit = 48): Promise<RecentData> =>
+    fetchAPI('/recent', { ...params, limit: String(limit) }),
 
   getNowPlaying: (): Promise<NowPlayingData> =>
     fetchAPI('/now-playing'),

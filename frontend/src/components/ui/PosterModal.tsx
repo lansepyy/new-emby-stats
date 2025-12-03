@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Modal } from './Modal'
-import { Film, Play, User, Clock, Timer, Image, RectangleHorizontal } from 'lucide-react'
+import { Film, Play, User, Clock, Timer, Image, RectangleHorizontal, Monitor, Smartphone } from 'lucide-react'
 import { formatDateTime, formatHours } from '@/lib/utils'
 
 export interface PosterModalData {
@@ -14,6 +14,8 @@ export interface PosterModalData {
   time?: string
   rank?: number
   overview?: string
+  client?: string
+  device?: string
 }
 
 interface PosterModalProps {
@@ -163,6 +165,24 @@ export function PosterModal({ data, onClose }: PosterModalProps) {
                   <User className="w-4 h-4 text-green-400" />
                 </div>
                 <span className="text-[var(--color-text-muted)]">{data.username}</span>
+              </div>
+            )}
+
+            {data.client && (
+              <div className="flex items-center gap-3 text-sm">
+                <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                  <Monitor className="w-4 h-4 text-cyan-400" />
+                </div>
+                <span className="text-[var(--color-text-muted)]">{data.client}</span>
+              </div>
+            )}
+
+            {data.device && (
+              <div className="flex items-center gap-3 text-sm">
+                <div className="w-8 h-8 rounded-lg bg-pink-500/20 flex items-center justify-center">
+                  <Smartphone className="w-4 h-4 text-pink-400" />
+                </div>
+                <span className="text-[var(--color-text-muted)]">{data.device}</span>
               </div>
             )}
 

@@ -103,6 +103,8 @@ export interface RecentItem {
   username: string
   time: string
   overview?: string
+  client?: string
+  device?: string
 }
 
 export interface RecentData {

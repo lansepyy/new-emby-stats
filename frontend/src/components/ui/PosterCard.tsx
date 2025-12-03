@@ -15,6 +15,8 @@ interface PosterCardProps {
   time?: string
   showEpisode?: boolean
   overview?: string
+  client?: string
+  device?: string
 }
 
 export function PosterCard({
@@ -29,6 +31,8 @@ export function PosterCard({
   time,
   showEpisode,
   overview,
+  client,
+  device,
 }: PosterCardProps) {
   const [imageError, setImageError] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
@@ -59,6 +63,8 @@ export function PosterCard({
     time,
     rank,
     overview,
+    client,
+    device,
   }
 
   return (

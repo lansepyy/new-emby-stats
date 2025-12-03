@@ -60,7 +60,7 @@ function App() {
               {activeTab === 'content' && <Content filterParams={filterParams} />}
               {activeTab === 'users' && <Users filterParams={filterParams} />}
               {activeTab === 'devices' && <Devices filterParams={filterParams} />}
-              {activeTab === 'history' && <History />}
+              {activeTab === 'history' && <History filterParams={filterParams} />}
             </motion.div>
           </AnimatePresence>
         </>
