@@ -2,19 +2,22 @@
 
 <div align="center">
 
-![Emby Stats](https://img.shields.io/badge/Emby-Stats-00a4dc?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBvbHlnb24gcG9pbnRzPSI1IDMgMTkgMTIgNSAyMSA1IDMiPjwvcG9seWdvbj48L3N2Zz4=)
+<img src="docs/logo.svg" alt="Emby Stats Logo" width="180" />
+
+<br/><br/>
+
 ![Docker Pulls](https://img.shields.io/docker/pulls/qc0624/emby-stats?style=for-the-badge&logo=docker)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
 **Emby 播放统计分析面板 - 可视化你的观影数据**
 
-[功能特性](#功能特性) • [快速开始](#快速开始) • [配置说明](#配置说明) • [常见问题](#常见问题)
+[Features](#features) • [Quick Start](#quick-start) • [Configuration](#configuration) • [FAQ](#faq)
 
 </div>
 
 ---
 
-## 功能特性
+## Features
 
 | 功能 | 说明 |
 |------|------|
@@ -27,16 +30,16 @@
 | **PWA 支持** | 可添加到手机主屏幕作为独立应用 |
 | **管理员认证** | 使用 Emby 管理员账号登录，保护数据安全 |
 
-### 技术栈
+### Tech Stack
 
-- **后端**: Python + FastAPI
-- **前端**: React + TypeScript + Vite + Tailwind CSS
-- **图表**: Recharts
-- **动画**: Framer Motion
+- **Backend**: Python + FastAPI
+- **Frontend**: React + TypeScript + Vite + Tailwind CSS
+- **Charts**: Recharts
+- **Animation**: Framer Motion
 
 ---
 
-## 快速开始
+## Quick Start
 
 ### 前置要求
 
@@ -89,7 +92,7 @@ docker run -d \
 
 ---
 
-## 配置说明
+## Configuration
 
 ### 环境变量
 
@@ -129,7 +132,7 @@ docker run -d \
 
 ---
 
-## 常见问题
+## FAQ
 
 ### Q: 显示无数据？
 
