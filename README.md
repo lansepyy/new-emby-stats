@@ -41,9 +41,18 @@
 
 ## Quick Start
 
+> [!IMPORTANT]
+> ## ⚠️ 必须先安装 Playback Reporting 插件！
+>
+> **本项目的所有数据都来自 Emby 的 Playback Reporting 插件，没装插件 = 没有数据！**
+>
+> 安装方法：Emby 控制台 → 插件 → 目录 → 搜索 "Playback Reporting" → 安装 → 重启 Emby
+>
+> 安装后需要有实际播放行为才会产生数据记录。
+
 ### 前置要求
 
-- Emby Server 已安装 **Playback Reporting** 插件
+- **Emby Server 已安装 Playback Reporting 插件**（见上方说明）
 - Docker 环境
 
 ### Docker Compose（推荐）
