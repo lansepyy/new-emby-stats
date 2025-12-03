@@ -152,19 +152,56 @@ docker run -d \
 
 ### Q: 挂载目录怎么配置？
 
-**A:** ⚠️ **这是最常见的错误！** 你需要挂载的是 **Emby 的数据目录**，不是给 emby-stats 创建一个新目录！
+> [!CAUTION]
+> ## 这是最常见的错误！
+> 你需要挂载的是 **Emby 已有的数据目录**，不是给 emby-stats 新建一个空目录！
 
 ```yaml
-# ❌ 错误示范 - 不要这样做！
+# ❌ 错误！不要新建目录！
 volumes:
   - ./emby-stats-data:/emby-data  # 这是空目录，没有任何数据
 
-# ✅ 正确做法 - 挂载 Emby 已有的数据目录
+# ✅ 正确：挂载 Emby 的数据目录
 volumes:
-  - /vol1/1000/docker/emby/config:/emby-data:ro  # 你的 Emby 配置目录
+  - /你的emby数据目录:/emby-data:ro
 ```
 
-找到你 Emby 容器的数据目录挂载位置，那个目录下应该有 `data/playback_reporting.db` 文件。
+**如何找到正确的目录？** 关键是找到包含 `data/playback_reporting.db` 的那个目录：
+
+```bash
+# 先找到你的 playback_reporting.db 在哪
+find / -name "playback_reporting.db" 2>/dev/null
+```
+
+找到后，挂载它的 **上两级目录**。例如：
+
+| 找到的路径 | 应该挂载 |
+|-----------|---------|
+| `/vol1/emby/data/playback_reporting.db` | `/vol1/emby:/emby-data:ro` |
+| `/opt/emby/config/data/playback_reporting.db` | `/opt/emby/config:/emby-data:ro` |
+| `/emby/data/playback_reporting.db` | `/emby:/emby-data:ro` |
+
+**常见的 Emby 目录结构有两种：**
+
+```
+# 结构 A：根目录下直接是 data/config/cache
+/emby/                    <- 挂载这个
+├── data/
+│   └── playback_reporting.db
+├── config/
+└── cache/
+
+# 结构 B：config 下面才有 data
+/emby/config/             <- 挂载这个
+├── data/
+│   └── playback_reporting.db
+└── ...
+```
+
+**验证方法：** 进入你要挂载的目录，确认 `data/playback_reporting.db` 存在：
+```bash
+ls -la /你的目录/data/playback_reporting.db
+```
 
 ### Q: 无法登录？
 
