@@ -228,6 +228,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useFilter() {
   const context = useContext(FilterContext)
   if (context === undefined) {

@@ -105,6 +105,7 @@ export interface RecentItem {
   overview?: string
   client?: string
   device?: string
+  duration_minutes?: number
 }
 
 export interface RecentData {
