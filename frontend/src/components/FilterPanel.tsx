@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useFilter } from '@/contexts/FilterContext'
+import { useFilter } from '@/contexts/useFilter'
 import { cn } from '@/lib/utils'
 import {
   Filter,

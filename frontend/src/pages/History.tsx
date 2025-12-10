@@ -10,7 +10,18 @@ interface HistoryProps {
 }
 
 // 列表项组件
-function HistoryListItem({ item }: { item: any }) {
+interface HistoryListItemProps {
+  item: {
+    poster_url?: string
+    item_name: string
+    username: string
+    time: string
+    show_name?: string
+    name?: string
+  }
+}
+
+function HistoryListItem({ item }: HistoryListItemProps) {
   const [imageError, setImageError] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
 

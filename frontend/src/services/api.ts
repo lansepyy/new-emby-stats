@@ -177,6 +177,32 @@ export const api = {
     })
     return res.json()
   },
+
+  // Server management (placeholder for future implementation)
+  createServer: async (data: Record<string, unknown>): Promise<{ server_id: string }> => {
+    const res = await fetch(`${API_BASE}/servers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return res.json()
+  },
+
+  updateServer: async (serverId: string, data: Record<string, unknown>): Promise<{ status: string; message: string }> => {
+    const res = await fetch(`${API_BASE}/servers/${serverId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return res.json()
+  },
+
+  deleteServer: async (serverId: string): Promise<{ status: string; message: string }> => {
+    const res = await fetch(`${API_BASE}/servers/${serverId}`, {
+      method: 'DELETE',
+    })
+    return res.json()
+  },
 }
 
 export default api

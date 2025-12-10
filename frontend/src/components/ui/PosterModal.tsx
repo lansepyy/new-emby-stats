@@ -25,15 +25,23 @@ interface PosterModalProps {
 
 type ImageMode = 'poster' | 'backdrop'
 
+interface ImageState {
+  error: boolean
+  mode: ImageMode
+}
+
 export function PosterModal({ data, onClose }: PosterModalProps) {
-  const [imageError, setImageError] = useState(false)
-  const [imageMode, setImageMode] = useState<ImageMode>('poster')
+  const [imageState, setImageState] = useState<ImageState>({
+    error: false,
+    mode: data?.backdropUrl ? 'backdrop' : 'poster',
+  })
 
   // 数据变化时重置状态
   useEffect(() => {
-    setImageError(false)
     // 如果有 backdrop 默认显示横版，否则显示竖版
-    setImageMode(data?.backdropUrl ? 'backdrop' : 'poster')
+    const newMode: ImageMode = data?.backdropUrl ? 'backdrop' : 'poster'
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setImageState({ error: false, mode: newMode })
   }, [data?.posterUrl, data?.backdropUrl])
 
   if (!data) return null
@@ -46,7 +54,7 @@ export function PosterModal({ data, onClose }: PosterModalProps) {
     ? `${data.backdropUrl}?maxHeight=720&maxWidth=1280`
     : undefined
 
-  const currentImageUrl = imageMode === 'backdrop' ? backdropUrl : posterUrl
+  const currentImageUrl = imageState.mode === 'backdrop' ? backdropUrl : posterUrl
   const hasBackdrop = !!backdropUrl
   const hasPoster = !!posterUrl
   const canSwitch = hasBackdrop && hasPoster
@@ -58,20 +66,20 @@ export function PosterModal({ data, onClose }: PosterModalProps) {
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--color-border)] to-transparent" />
         {/* 海报区域 */}
         <div className="relative bg-[var(--color-content2)]">
-          {currentImageUrl && !imageError ? (
+          {currentImageUrl && !imageState.error ? (
             <img
               src={currentImageUrl}
               alt={data.title}
               className={`w-full object-contain ${
-                imageMode === 'backdrop'
+                imageState.mode === 'backdrop'
                   ? 'max-h-[40vh] aspect-video'
                   : 'max-h-[50vh]'
               }`}
-              onError={() => setImageError(true)}
+              onError={() => setImageState(prev => ({ ...prev, error: true }))}
             />
           ) : (
             <div className={`w-full flex items-center justify-center bg-[var(--color-content2)] ${
-              imageMode === 'backdrop'
+              imageState.mode === 'backdrop'
                 ? 'aspect-video max-h-[40vh]'
                 : 'aspect-[2/3] max-h-[50vh]'
             }`}>
@@ -91,11 +99,10 @@ export function PosterModal({ data, onClose }: PosterModalProps) {
             <div className="absolute top-4 right-4 flex gap-1 bg-black/50 backdrop-blur-sm rounded-lg p-1">
               <button
                 onClick={() => {
-                  setImageError(false)
-                  setImageMode('poster')
+                  setImageState({ error: false, mode: 'poster' })
                 }}
                 className={`p-1.5 rounded-md transition-colors ${
-                  imageMode === 'poster'
+                  imageState.mode === 'poster'
                     ? 'bg-white/20 text-white'
                     : 'text-white/60 hover:text-white hover:bg-white/10'
                 }`}
@@ -105,11 +112,10 @@ export function PosterModal({ data, onClose }: PosterModalProps) {
               </button>
               <button
                 onClick={() => {
-                  setImageError(false)
-                  setImageMode('backdrop')
+                  setImageState({ error: false, mode: 'backdrop' })
                 }}
                 className={`p-1.5 rounded-md transition-colors ${
-                  imageMode === 'backdrop'
+                  imageState.mode === 'backdrop'
                     ? 'bg-white/20 text-white'
                     : 'text-white/60 hover:text-white hover:bg-white/10'
                 }`}

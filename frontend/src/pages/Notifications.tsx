@@ -64,11 +64,11 @@ export function Notifications() {
       // Initialize form state from loaded data
       const config = (notificationsData as unknown as { config?: Record<string, unknown> }).config || {}
       const newFormState: FormState = {
-        emby: config.emby || { enabled: false },
-        telegram: { ...{enabled: false, admin_users: [], regular_users: []}, ...config.telegram },
-        discord: config.discord || { enabled: false },
-        wecom: { ...{ enabled: false, user_list: [] }, ...config.wecom },
-        tmdb: config.tmdb || { enabled: false }
+        emby: (config.emby && typeof config.emby === 'object' ? config.emby : { enabled: false }) as EmbyChannelConfig,
+        telegram: { enabled: false, admin_users: [], regular_users: [], ...(config.telegram && typeof config.telegram === 'object' ? config.telegram : {}) } as TelegramChannelConfig,
+        discord: (config.discord && typeof config.discord === 'object' ? config.discord : { enabled: false }) as DiscordChannelConfig,
+        wecom: { enabled: false, user_list: [], ...(config.wecom && typeof config.wecom === 'object' ? config.wecom : {}) } as WeComChannelConfig,
+        tmdb: (config.tmdb && typeof config.tmdb === 'object' ? config.tmdb : { enabled: false }) as TMDBChannelConfig
       }
       setFormState(newFormState)
       setOriginalFormState(newFormState)

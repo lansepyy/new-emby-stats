@@ -2,8 +2,8 @@ import { Layout } from '@/components/Layout'
 import { NowPlaying } from '@/components/NowPlaying'
 import { Overview, Content, Users, Devices, History, Notifications, Login } from '@/pages'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useAuth } from '@/contexts/AuthContext'
-import { useFilter } from '@/contexts/FilterContext'
+import { useAuth } from '@/contexts/useAuth'
+import { useFilter } from '@/contexts/useFilter'
 import { Loader2 } from 'lucide-react'
 
 const pageVariants = {

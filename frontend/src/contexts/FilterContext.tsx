@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { createContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { api } from '@/services/api'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/contexts/useAuth'
 
 export interface NameMappingItem {
   original: string
@@ -68,7 +68,7 @@ const defaultFilters: FilterState = {
   selectedPlaybackMethods: [],
 }
 
-const FilterContext = createContext<FilterContextType | undefined>(undefined)
+export const FilterContext = createContext<FilterContextType | undefined>(undefined)
 
 export function FilterProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth()
@@ -226,12 +226,4 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       {children}
     </FilterContext.Provider>
   )
-}
-
-export function useFilter() {
-  const context = useContext(FilterContext)
-  if (context === undefined) {
-    throw new Error('useFilter must be used within a FilterProvider')
-  }
-  return context
 }

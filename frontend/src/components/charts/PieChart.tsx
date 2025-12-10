@@ -1,5 +1,5 @@
 import ReactECharts from 'echarts-for-react'
-import { useTheme } from '@/contexts/ThemeContext'
+import { useTheme } from '@/contexts/useTheme'
 
 interface PieChartProps {
   data: Array<{ name: string; value: number }>

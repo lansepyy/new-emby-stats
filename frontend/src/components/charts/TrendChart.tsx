@@ -1,6 +1,6 @@
 import ReactECharts from 'echarts-for-react'
 import type { TrendItem } from '@/types'
-import { useTheme } from '@/contexts/ThemeContext'
+import { useTheme } from '@/contexts/useTheme'
 
 interface TrendChartProps {
   data: TrendItem[]

@@ -1,6 +1,6 @@
 import ReactECharts from 'echarts-for-react'
 import type { HourlyItem } from '@/types'
-import { useTheme } from '@/contexts/ThemeContext'
+import { useTheme } from '@/contexts/useTheme'
 
 interface HeatmapChartProps {
   data: HourlyItem[]
