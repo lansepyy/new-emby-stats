@@ -88,14 +88,15 @@ export function Notifications() {
       setData(notificationsData)
 
       // Initialize form state from loaded data (keeping existing channel config logic)
-      const config = {} as any
+      const config: any = {}
       if (settingsResponse && settingsResponse.length > 0) {
         const mainSettings = settingsResponse[0]
-        config.emby = { enabled: false, ...mainSettings.conditions?.emby }
-        config.telegram = { enabled: false, admin_users: [], regular_users: [], ...mainSettings.conditions?.telegram }
-        config.discord = { enabled: false, ...mainSettings.conditions?.discord }
-        config.wecom = { enabled: false, user_list: [], ...mainSettings.conditions?.wecom }
-        config.tmdb = { enabled: false, ...mainSettings.conditions?.tmdb }
+        const conditions = mainSettings.conditions || {}
+        config.emby = { enabled: false, ...(conditions.emby || {}) }
+        config.telegram = { enabled: false, admin_users: [], regular_users: [], ...(conditions.telegram || {}) }
+        config.discord = { enabled: false, ...(conditions.discord || {}) }
+        config.wecom = { enabled: false, user_list: [], ...(conditions.wecom || {}) }
+        config.tmdb = { enabled: false, ...(conditions.tmdb || {}) }
       }
       
       const newFormState: FormState = {

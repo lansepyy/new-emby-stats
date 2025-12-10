@@ -158,8 +158,8 @@ export const api = {
     fetchAPI('/notifications/templates').then(response => {
       // Backend returns { success: true, data: templates_dict }
       // Convert to array format expected by frontend
-      if (response && response.data) {
-        return Object.entries(response.data).map(([id, template]: [string, any]) => ({
+      if (response && (response as any).data) {
+        return Object.entries((response as any).data).map(([id, template]: [string, any]) => ({
           id,
           name: id,
           ...template,
