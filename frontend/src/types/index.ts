@@ -203,3 +203,47 @@ export interface NotificationsData {
   preview?: NotificationPreview
   history?: NotificationHistory[]
 }
+
+export interface EmbyChannelConfig {
+  enabled: boolean
+  server_url?: string
+  api_token?: string
+  webhook_url?: string
+}
+
+export interface TelegramChannelConfig {
+  enabled: boolean
+  bot_token?: string
+  admin_users?: string[]
+  regular_users?: string[]
+}
+
+export interface DiscordChannelConfig {
+  enabled: boolean
+  webhook_url?: string
+  username?: string
+  avatar_url?: string
+}
+
+export interface WeComChannelConfig {
+  enabled: boolean
+  corp_id?: string
+  corp_secret?: string
+  agent_id?: string
+  proxy_url?: string
+  user_list?: string[]
+}
+
+export interface TMDBChannelConfig {
+  enabled: boolean
+  api_key?: string
+  base_url?: string
+}
+
+export interface NotificationChannelsConfig {
+  emby?: EmbyChannelConfig
+  telegram?: TelegramChannelConfig
+  discord?: DiscordChannelConfig
+  wecom?: WeComChannelConfig
+  tmdb?: TMDBChannelConfig
+}
