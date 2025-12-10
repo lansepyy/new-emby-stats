@@ -1,6 +1,7 @@
 import { Layout } from '@/components/Layout'
 import { NowPlaying } from '@/components/NowPlaying'
 import { Overview, Content, Users, Devices, History, Login } from '@/pages'
+import { NotificationTemplatePanel } from '@/components/NotificationTemplatePanel'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
 import { useFilter } from '@/contexts/FilterContext'
@@ -61,6 +62,7 @@ function App() {
               {activeTab === 'users' && <Users filterParams={filterParams} />}
               {activeTab === 'devices' && <Devices filterParams={filterParams} />}
               {activeTab === 'history' && <History filterParams={filterParams} />}
+              {activeTab === 'notification' && <Notification />}
             </motion.div>
           </AnimatePresence>
         </>

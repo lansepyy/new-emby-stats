@@ -133,6 +133,137 @@ export const api = {
     const res = await fetch(`${API_BASE}/name-mappings/reload`, { method: 'POST' })
     return res.json()
   },
+
+  // 通知模板相关
+  getNotificationTemplates: async (): Promise<{ status: string; data: any[] }> => {
+    const res = await fetch(`${API_BASE}/notification-templates`)
+    return res.json()
+  },
+
+  createNotificationTemplate: async (data: {
+    name: string
+    channel: string
+    template_content: string
+    variables: string[]
+  }): Promise<{ status: string; data: any; message?: string }> => {
+    const res = await fetch(`${API_BASE}/notification-templates`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return res.json()
+  },
+
+  updateNotificationTemplate: async (templateId: string, data: {
+    name: string
+    template_content: string
+    variables: string[]
+  }): Promise<{ status: string; message: string }> => {
+    const res = await fetch(`${API_BASE}/notification-templates/${templateId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return res.json()
+  },
+
+  deleteNotificationTemplate: async (templateId: string): Promise<{ status: string; message: string }> => {
+    const res = await fetch(`${API_BASE}/notification-templates/${templateId}`, {
+      method: 'DELETE',
+    })
+    return res.json()
+  },
+
+  renderNotificationTemplate: async (templateId: string, context: Record<string, any>): Promise<{
+    status: string
+    data: { template_id: string; rendered_content: string }
+  }> => {
+    const res = await fetch(`${API_BASE}/notification-templates/${templateId}/render`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(context),
+    })
+    return res.json()
+  },
+
+  createDefaultTemplates: async (): Promise<{ status: string; message: string }> => {
+    const res = await fetch(`${API_BASE}/notification-templates/create-defaults`, {
+      method: 'POST',
+    })
+    return res.json()
+  },
+
+  // 企业微信相关
+  getWeComConfigs: async (): Promise<{ status: string; data: any[] }> => {
+    const res = await fetch(`${API_BASE}/wecom/configs`)
+    return res.json()
+  },
+
+  createWeComConfig: async (data: {
+    name: string
+    webhook_url: string
+    enabled: boolean
+  }): Promise<{ status: string; data: any; message?: string }> => {
+    const res = await fetch(`${API_BASE}/wecom/configs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return res.json()
+  },
+
+  updateWeComConfig: async (configId: string, data: {
+    name: string
+    webhook_url: string
+    enabled: boolean
+  }): Promise<{ status: string; message: string }> => {
+    const res = await fetch(`${API_BASE}/wecom/configs/${configId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return res.json()
+  },
+
+  deleteWeComConfig: async (configId: string): Promise<{ status: string; message: string }> => {
+    const res = await fetch(`${API_BASE}/wecom/configs/${configId}`, {
+      method: 'DELETE',
+    })
+    return res.json()
+  },
+
+  testWeComConnection: async (webhook_url: string): Promise<{ status: string; data: { success: boolean; message: string } }> => {
+    const res = await fetch(`${API_BASE}/wecom/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ webhook_url }),
+    })
+    return res.json()
+  },
+
+  sendWeComNotification: async (data: {
+    config_id: string
+    content: string
+    template_id?: string
+    context?: Record<string, any>
+  }): Promise<{ status: string; message: string }> => {
+    const res = await fetch(`${API_BASE}/wecom/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    return res.json()
+  },
+
+  getWeComLogs: async (limit: number = 50): Promise<{ status: string; data: any[] }> => {
+    const res = await fetch(`${API_BASE}/wecom/logs?limit=${limit}`)
+    return res.json()
+  },
+
+  getWeComStatistics: async (): Promise<{ status: string; data: any }> => {
+    const res = await fetch(`${API_BASE}/wecom/statistics`)
+    return res.json()
+  },
 }
 
 export default api

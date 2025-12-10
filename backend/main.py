@@ -71,6 +71,7 @@ async def auth_middleware(request: Request, call_next):
 app.include_router(auth_router)
 app.include_router(stats_router)
 app.include_router(media_router)
+app.include_router(notification_templates_router)
 
 # 静态文件服务
 frontend_path = "/app/frontend"

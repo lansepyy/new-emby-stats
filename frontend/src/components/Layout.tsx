@@ -1,7 +1,7 @@
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Chip } from '@/components/ui'
-import { Play, LayoutDashboard, Flame, Users, Monitor, History, FileText, LogOut, Sun, Moon, Filter, Settings, Server } from 'lucide-react'
+import { Play, LayoutDashboard, Flame, Users, Monitor, History, FileText, LogOut, Sun, Moon, Filter, Settings, Server, Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -10,6 +10,7 @@ import { useServer } from '@/contexts/ServerContext'
 import { FilterPanel } from '@/components/FilterPanel'
 import { NameMappingPanel } from '@/components/NameMappingPanel'
 import { ServerManagementPanel } from '@/components/ServerManagementPanel'
+import { NotificationTemplatePanel } from '@/components/NotificationTemplatePanel'
 
 interface LayoutProps {
   children: (props: { activeTab: string; refreshKey: number }) => ReactNode
@@ -21,6 +22,7 @@ const TABS = [
   { id: 'users', label: '用户', icon: Users },
   { id: 'devices', label: '设备', icon: Monitor },
   { id: 'history', label: '历史', icon: History },
+  { id: 'notification', label: '通知', icon: Bell },
   { id: 'report', label: '报告', icon: FileText },
 ]
 
@@ -41,6 +43,24 @@ export function Layout({ children, hideChrome = false }: LayoutProps) {
   const [filterPanelOpen, setFilterPanelOpen] = useState(false)
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false)
   const [serverPanelOpen, setServerPanelOpen] = useState(false)
+  const [notificationPanelOpen, setNotificationPanelOpen] = useState(false)
+
+  // 监听自定义事件以打开通知模板面板
+  useEffect(() => {
+    const handleOpenNotificationPanel = (event: CustomEvent) => {
+      if (event.detail?.tab) {
+        // 如果指定了特定标签，可以在这里处理
+        setNotificationPanelOpen(true)
+      } else {
+        setNotificationPanelOpen(true)
+      }
+    }
+
+    window.addEventListener('openNotificationPanel', handleOpenNotificationPanel as EventListener)
+    return () => {
+      window.removeEventListener('openNotificationPanel', handleOpenNotificationPanel as EventListener)
+    }
+  }, [])
 
   return (
     <div className={cn('min-h-screen', hideChrome ? 'pb-6' : 'pb-24')}>
@@ -122,6 +142,13 @@ export function Layout({ children, hideChrome = false }: LayoutProps) {
                 </button>
                 <span className="text-xs text-[var(--color-text-muted)] hidden sm:inline">{username}</span>
                 <button
+                  onClick={() => setNotificationPanelOpen(true)}
+                  className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-foreground hover:bg-[var(--color-hover-overlay)] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  title="通知模板"
+                >
+                  <Bell className="w-4 h-4" />
+                </button>
+                <button
                   onClick={() => setSettingsPanelOpen(true)}
                   className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-foreground hover:bg-[var(--color-hover-overlay)] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                   title="设置"
@@ -178,9 +205,15 @@ export function Layout({ children, hideChrome = false }: LayoutProps) {
             onClose={() => setServerPanelOpen(false)}
           />
 
+          {/* Notification Template Panel */}
+          <NotificationTemplatePanel
+            isOpen={notificationPanelOpen}
+            onClose={() => setNotificationPanelOpen(false)}
+          />
+
           {/* 底部 Tab 导航 - 面板打开时隐藏，避免遮挡 */}
           <AnimatePresence>
-            {!filterPanelOpen && !settingsPanelOpen && (
+            {!filterPanelOpen && !settingsPanelOpen && !serverPanelOpen && !notificationPanelOpen && (
               <motion.nav
                 initial={{ y: 16, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
