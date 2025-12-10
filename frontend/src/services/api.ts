@@ -11,6 +11,10 @@ import type {
   RecentData,
   NowPlayingData,
   FilterOptionsData,
+  NotificationsData,
+  NotificationSettings,
+  NotificationTemplate,
+  NotificationPreview,
 } from '@/types'
 
 const API_BASE = '/api'
@@ -131,6 +135,46 @@ export const api = {
 
   reloadNameMappings: async (): Promise<{ status: string; message: string }> => {
     const res = await fetch(`${API_BASE}/name-mappings/reload`, { method: 'POST' })
+    return res.json()
+  },
+
+  // 通知相关
+  getNotifications: (): Promise<NotificationsData> =>
+    fetchAPI('/notifications'),
+
+  getNotificationSettings: (): Promise<NotificationSettings[]> =>
+    fetchAPI('/notifications/settings'),
+
+  updateNotificationSettings: async (settings: NotificationSettings[]): Promise<{ status: string; message: string }> => {
+    const res = await fetch(`${API_BASE}/notifications/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    })
+    return res.json()
+  },
+
+  getNotificationTemplates: (): Promise<NotificationTemplate[]> =>
+    fetchAPI('/notifications/templates'),
+
+  updateNotificationTemplates: async (templates: NotificationTemplate[]): Promise<{ status: string; message: string }> => {
+    const res = await fetch(`${API_BASE}/notifications/templates`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(templates),
+    })
+    return res.json()
+  },
+
+  getNotificationPreview: (templateId: string, previewData?: Record<string, unknown>): Promise<NotificationPreview> =>
+    fetchAPI('/notifications/preview', { template_id: templateId, ...(previewData || {}) }),
+
+  sendNotificationPreview: async (templateId: string, recipient: string, previewData?: Record<string, unknown>): Promise<{ status: string; message: string }> => {
+    const res = await fetch(`${API_BASE}/notifications/preview/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template_id: templateId, recipient, preview_data: previewData || {} }),
+    })
     return res.json()
   },
 }

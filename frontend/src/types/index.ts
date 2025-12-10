@@ -154,3 +154,52 @@ export interface FilterOptionsData {
     max: string | null
   }
 }
+
+// Notification Types
+export interface NotificationSettings {
+  id: string
+  name: string
+  description?: string
+  enabled: boolean
+  notification_types: string[]
+  recipients: string[]
+  conditions: Record<string, unknown>
+  created_at?: string
+  updated_at?: string
+}
+
+export interface NotificationTemplate {
+  id: string
+  name: string
+  subject: string
+  body: string
+  template_type: string
+  variables: string[]
+  created_at?: string
+  updated_at?: string
+}
+
+export interface NotificationPreview {
+  id: string
+  template_id: string
+  preview_data: Record<string, unknown>
+  subject_preview: string
+  body_preview: string
+  generated_at?: string
+}
+
+export interface NotificationHistory {
+  id: string
+  template_id: string
+  recipient: string
+  sent_at: string
+  status: 'sent' | 'failed' | 'pending'
+  error_message?: string
+}
+
+export interface NotificationsData {
+  settings: NotificationSettings[]
+  templates: NotificationTemplate[]
+  preview?: NotificationPreview
+  history?: NotificationHistory[]
+}
