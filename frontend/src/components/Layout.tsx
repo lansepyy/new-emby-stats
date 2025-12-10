@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Chip } from '@/components/ui'
-import { Play, LayoutDashboard, Flame, Users, Monitor, History, FileText, LogOut, Sun, Moon, Filter, Settings, Server } from 'lucide-react'
+import { Play, LayoutDashboard, Flame, Users, Monitor, History, FileText, LogOut, Sun, Moon, Filter, Settings, Server, Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -21,6 +21,7 @@ const TABS = [
   { id: 'users', label: '用户', icon: Users },
   { id: 'devices', label: '设备', icon: Monitor },
   { id: 'history', label: '历史', icon: History },
+  { id: 'notifications', label: '通知', icon: Bell },
   { id: 'report', label: '报告', icon: FileText },
 ]
 
