@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.90 (2025-12-10)
+
+### 新功能
+- **Docker 集成测试系统** - 完整的自动化测试框架
+  - 一键运行 Docker 镜像构建和集成测试
+  - 覆盖 20+ API 端点测试（通知、统计、媒体管理、认证）
+  - 自动生成 JSON 格式测试报告和容器日志
+  - 支持多种运行模式（跳过构建、保持容器、自定义端口）
+  - 详细的测试文档和快速指南
+
+### 文档
+- 新增 `integration_test.py` - Python 集成测试脚本
+- 新增 `docker-integration-test.sh` - Bash 自动化测试脚本
+- 新增 `INTEGRATION_TESTING.md` - 详细测试文档
+- 新增 `TESTING_QUICKSTART.md` - 快速测试指南
+- 新增 `DOCKER_TESTING_SUMMARY.md` - 测试系统总结
+- 更新 `README.md` - 添加 Testing 章节
+
+---
+
 ## v1.85 (2025-12-10)
 
 ### 修复

@@ -344,6 +344,41 @@ docker build -t emby-stats .
 
 ---
 
+## Testing
+
+### Docker Integration Testing
+
+完整的 Docker 集成测试系统，验证镜像构建、容器运行和所有 API 功能。
+
+#### 🚀 快速测试
+
+```bash
+# 一键运行完整测试
+./docker-integration-test.sh
+```
+
+测试将自动完成：
+- ✅ Docker 镜像构建
+- ✅ 容器启动和健康检查
+- ✅ 通知功能 API 测试（7个端点）
+- ✅ 统计功能 API 测试（5个端点）
+- ✅ 媒体管理 API 测试（3个端点）
+- ✅ 前端访问和 PWA 功能测试
+- ✅ 生成详细测试报告
+
+#### 📊 测试报告
+
+测试完成后生成：
+- `integration_test_report.json` - JSON 格式详细报告
+- `docker_container_logs.txt` - 容器完整日志
+
+#### 📖 详细文档
+
+- [快速测试指南](TESTING_QUICKSTART.md) - 快速上手
+- [完整测试文档](INTEGRATION_TESTING.md) - 详细说明和故障排除
+
+---
+
 ## License
 
 MIT License
