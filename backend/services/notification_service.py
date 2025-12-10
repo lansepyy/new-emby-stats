@@ -1,9 +1,8 @@
 import logging
 import asyncio
 import httpx
-import json
 from jinja2 import Environment, BaseLoader
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from config import settings as app_settings
 from notification_settings import notification_settings_store, NotificationSettings
 
