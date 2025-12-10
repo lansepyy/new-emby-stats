@@ -4,6 +4,9 @@
 """
 import os
 
+# 导入通知设置存储
+from notification_settings import notification_settings_store
+
 
 class Settings:
     """应用配置"""
@@ -27,6 +30,9 @@ class Settings:
     # 缓存配置
     ITEM_CACHE_MAX_SIZE: int = 500
     ITEM_CACHE_EVICT_COUNT: int = 100
+
+    # 通知设置存储实例
+    notification_settings = notification_settings_store
 
 
 settings = Settings()
