@@ -44,6 +44,68 @@ class TemplatePreviewRequest(BaseModel):
     content: Dict[str, Any]
 
 
+@router.get("")
+async def get_notifications():
+    """获取通知配置（包含设置、模板等）"""
+    try:
+        settings = notification_settings_store.get_settings()
+        templates = notification_settings_store.get_templates()
+        
+        # 转换模板为前端期望的格式
+        template_list = []
+        for template_id, template_data in templates.items():
+            template_list.append({
+                "id": template_id,
+                "name": template_id.capitalize(),
+                "subject": template_data.get("title", ""),
+                "body": template_data.get("text", ""),
+                "template_type": template_id,
+                "variables": [],
+            })
+        
+        # 从设置中提取通道配置
+        config = {
+            "emby": {
+                "enabled": False,
+                "server_url": settings.emby_connection.url if settings.emby_connection else None,
+                "api_token": settings.emby_connection.api_key if settings.emby_connection else None,
+            },
+            "telegram": {
+                "enabled": settings.telegram_enabled,
+                "bot_token": settings.telegram_bot_token,
+                "admin_users": [admin.user_id for admin in settings.telegram_admins] if settings.telegram_admins else [],
+                "regular_users": [user.user_id for user in settings.telegram_users] if settings.telegram_users else [],
+            },
+            "discord": {
+                "enabled": settings.discord_enabled,
+                "webhook_url": settings.discord_webhooks[0].url if settings.discord_webhooks and len(settings.discord_webhooks) > 0 else None,
+                "username": settings.discord_webhooks[0].username if settings.discord_webhooks and len(settings.discord_webhooks) > 0 else None,
+            },
+            "wecom": {
+                "enabled": settings.wecom_enabled,
+                "corp_id": settings.wecom_config.corp_id if settings.wecom_config else None,
+                "corp_secret": settings.wecom_config.corp_secret if settings.wecom_config else None,
+                "agent_id": settings.wecom_config.agent_id if settings.wecom_config else None,
+                "proxy_url": settings.wecom_config.proxy if settings.wecom_config else None,
+                "user_list": [settings.wecom_config.to_user] if settings.wecom_config and settings.wecom_config.to_user else [],
+            },
+            "tmdb": {
+                "enabled": settings.tmdb_enabled,
+                "api_key": settings.tmdb_config.api_key if settings.tmdb_config else None,
+            }
+        }
+        
+        return {
+            "settings": [],
+            "templates": template_list,
+            "config": config,
+            "history": []
+        }
+    except Exception as e:
+        logger.error(f"[Notifications] 获取通知数据失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取通知数据失败: {str(e)}")
+
+
 @router.post("/webhook")
 async def webhook(request: Request, background_tasks: BackgroundTasks):
     """
@@ -83,17 +145,102 @@ async def get_settings():
         raise HTTPException(status_code=500, detail=f"获取设置失败: {str(e)}")
 
 
+@router.post("/settings")
+async def save_notification_settings(settings: list):
+    """保存通知设置（前端格式）"""
+    try:
+        if not settings or len(settings) == 0:
+            raise HTTPException(status_code=400, detail="无效的设置数据")
+        
+        # 提取第一个设置对象的 conditions 字段，它包含了所有通道配置
+        setting = settings[0]
+        conditions = setting.get('conditions', {})
+        
+        # 构建后端需要的设置格式
+        backend_settings = {}
+        
+        # Emby 配置
+        emby_config = conditions.get('emby', {})
+        if emby_config.get('enabled'):
+            backend_settings['emby_connection'] = {
+                'url': emby_config.get('server_url', ''),
+                'api_key': emby_config.get('api_token', '')
+            }
+        
+        # Telegram 配置
+        telegram_config = conditions.get('telegram', {})
+        backend_settings['telegram_enabled'] = telegram_config.get('enabled', False)
+        if telegram_config.get('bot_token'):
+            backend_settings['telegram_bot_token'] = telegram_config.get('bot_token')
+        backend_settings['telegram_admins'] = [
+            {'user_id': uid, 'name': None}
+            for uid in telegram_config.get('admin_users', [])
+        ]
+        backend_settings['telegram_users'] = [
+            {'user_id': uid, 'name': None}
+            for uid in telegram_config.get('regular_users', [])
+        ]
+        
+        # Discord 配置
+        discord_config = conditions.get('discord', {})
+        backend_settings['discord_enabled'] = discord_config.get('enabled', False)
+        if discord_config.get('webhook_url'):
+            backend_settings['discord_webhooks'] = [{
+                'url': discord_config.get('webhook_url'),
+                'username': discord_config.get('username', 'Emby Stats')
+            }]
+        else:
+            backend_settings['discord_webhooks'] = []
+        
+        # WeCom 配置
+        wecom_config = conditions.get('wecom', {})
+        backend_settings['wecom_enabled'] = wecom_config.get('enabled', False)
+        if wecom_config.get('corp_id'):
+            backend_settings['wecom_config'] = {
+                'corp_id': wecom_config.get('corp_id', ''),
+                'corp_secret': wecom_config.get('corp_secret', ''),
+                'agent_id': wecom_config.get('agent_id', ''),
+                'proxy': wecom_config.get('proxy_url'),
+                'to_user': ','.join(wecom_config.get('user_list', []))
+            }
+        
+        # TMDB 配置
+        tmdb_config = conditions.get('tmdb', {})
+        backend_settings['tmdb_enabled'] = tmdb_config.get('enabled', False)
+        if tmdb_config.get('api_key'):
+            backend_settings['tmdb_config'] = {
+                'api_key': tmdb_config.get('api_key', '')
+            }
+        
+        # 更新设置
+        success, error = notification_settings_store.update_settings(backend_settings)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail=error or "更新设置失败")
+        
+        return {
+            "status": "success",
+            "message": "设置已保存"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[Notifications] 保存设置失败: {e}")
+        raise HTTPException(status_code=500, detail=f"保存设置失败: {str(e)}")
+
+
 @router.put("/settings")
 async def update_settings(request: SettingsUpdateRequest):
     """更新通知设置"""
     try:
         # 获取当前设置
         current_settings = notification_settings_store.get_settings()
-        current_dict = current_settings.dict()
+        current_dict = current_settings.model_dump()
         
         # 合并更新数据
         update_data = {}
-        for field, value in request.dict(exclude_none=True).items():
+        for field, value in request.model_dump(exclude_none=True).items():
             if value is not None:
                 update_data[field] = value
         

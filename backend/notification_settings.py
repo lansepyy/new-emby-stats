@@ -5,7 +5,7 @@
 import os
 import json
 import threading
-from typing import Optional, List, Dict, Any, Callable
+from typing import Optional, List, Dict, Callable
 from pydantic import BaseModel, Field, field_validator
 import logging
 
@@ -17,7 +17,7 @@ NOTIFICATION_SETTINGS_FILE = os.getenv("NOTIFICATION_SETTINGS_FILE", "/config/no
 
 class EmbyConnection(BaseModel):
     """Emby 连接配置"""
-    url: str = Field(..., description="Emby 服务器地址")
+    url: str = Field("", description="Emby 服务器地址")
     api_key: Optional[str] = Field(None, description="Emby API 密钥")
 
 
@@ -36,22 +36,22 @@ class TelegramUser(BaseModel):
 
 class DiscordWebhook(BaseModel):
     """Discord Webhook 配置"""
-    url: str = Field(..., description="Discord Webhook URL")
+    url: str = Field("", description="Discord Webhook URL")
     username: Optional[str] = Field("Emby Stats", description="机器人用户名")
 
 
 class WeComConfig(BaseModel):
     """WeCom 企业微信配置"""
-    corp_id: str = Field(..., description="企业ID")
-    corp_secret: str = Field(..., description="应用密钥")
-    agent_id: str = Field(..., description="应用ID")
+    corp_id: str = Field("", description="企业ID")
+    corp_secret: str = Field("", description="应用密钥")
+    agent_id: str = Field("", description="应用ID")
     proxy: Optional[str] = Field(None, description="代理地址")
     to_user: Optional[str] = Field(None, description="接收者用户ID")
 
 
 class TMDBConfig(BaseModel):
     """TMDB 配置"""
-    api_key: str = Field(..., description="TMDB API 密钥")
+    api_key: str = Field("", description="TMDB API 密钥")
 
 
 class NotificationTemplate(BaseModel):
@@ -142,7 +142,7 @@ class NotificationSettings(BaseModel):
         """验证 Discord Webhook URL"""
         if v:
             for webhook in v:
-                if not webhook.url.startswith('https://discord.com/api/webhooks/'):
+                if webhook.url and not webhook.url.startswith('https://discord'):
                     raise ValueError("Discord Webhook URL 格式不正确")
         return v
 
