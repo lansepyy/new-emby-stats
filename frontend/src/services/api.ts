@@ -155,19 +155,37 @@ export const api = {
   },
 
   getNotificationTemplates: (): Promise<NotificationTemplate[]> =>
-    fetchAPI('/notifications/templates'),
+    fetchAPI('/notifications/templates').then(response => {
+      // Backend returns { success: true, data: templates_dict }
+      // Convert to array format expected by frontend
+      if (response && response.data) {
+        return Object.entries(response.data).map(([id, template]: [string, any]) => ({
+          id,
+          name: id,
+          ...template,
+          template_type: id
+        }))
+      }
+      return []
+    }),
 
-  updateNotificationTemplates: async (templates: NotificationTemplate[]): Promise<{ status: string; message: string }> => {
-    const res = await fetch(`${API_BASE}/notifications/templates`, {
-      method: 'POST',
+  updateNotificationTemplate: async (templateId: string, templateData: { title: string; text: string; image_template?: string }): Promise<{ status: string; message: string }> => {
+    const res = await fetch(`${API_BASE}/notifications/templates/${templateId}`, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(templates),
+      body: JSON.stringify(templateData),
     })
     return res.json()
   },
 
-  getNotificationPreview: (templateId: string, previewData?: Record<string, unknown>): Promise<NotificationPreview> =>
-    fetchAPI('/notifications/preview', { template_id: templateId, ...(previewData || {}) }),
+  previewNotificationTemplate: async (templateId: string, content: Record<string, unknown>): Promise<NotificationPreview> => {
+    const res = await fetch(`${API_BASE}/notifications/templates/preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template_id: templateId, content }),
+    })
+    return res.json()
+  },
 
   sendNotificationPreview: async (templateId: string, recipient: string, previewData?: Record<string, unknown>): Promise<{ status: string; message: string }> => {
     const res = await fetch(`${API_BASE}/notifications/preview/send`, {

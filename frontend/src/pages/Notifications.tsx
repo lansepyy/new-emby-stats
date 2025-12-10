@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
   Bell, Settings, FileText, Send, RefreshCw, AlertCircle, CheckCircle, Clock,
-  Copy, Eye, EyeOff, AlertTriangle, Loader2, Save, X
+  Copy, Eye, EyeOff, AlertTriangle, Loader2, Save, X, ChevronDown, ChevronRight,
+  Code, Play, Eye as EyeIcon, RotateCcw, Info, User, Bookmark, Library,
+  MessageSquare
 } from 'lucide-react'
 import { api } from '@/services/api'
-import type { NotificationsData, EmbyChannelConfig, TelegramChannelConfig, DiscordChannelConfig, WeComChannelConfig, TMDBChannelConfig } from '@/types'
+import type { NotificationsData, EmbyChannelConfig, TelegramChannelConfig, DiscordChannelConfig, WeComChannelConfig, TMDBChannelConfig, NotificationTemplate } from '@/types'
 
 interface LoadingState {
   isLoading: boolean
@@ -55,19 +57,52 @@ export function Notifications() {
   })
   const [copiedField, setCopiedField] = useState<string | null>(null)
 
+  // Template management state
+  const [templates, setTemplates] = useState<Record<string, NotificationTemplate>>({})
+  const [expandedTemplates, setExpandedTemplates] = useState<Set<string>>(new Set())
+  const [editingTemplates, setEditingTemplates] = useState<Record<string, { title: string; text: string; image_template?: string }>>({})
+  const [originalTemplates, setOriginalTemplates] = useState<Record<string, { title: string; text: string; image_template?: string }>>({})
+  const [templateLoading, setTemplateLoading] = useState<Record<string, boolean>>({})
+  const [templateErrors, setTemplateErrors] = useState<Record<string, string>>({})
+  const [previewData, setPreviewData] = useState<Record<string, any>>({})
+  const [previewResults, setPreviewResults] = useState<Record<string, any>>({})
+  const [previewLoading, setPreviewLoading] = useState<Record<string, boolean>>({})
+  const [sampleEventType, setSampleEventType] = useState<string>('playback')
+
   const loadNotifications = async () => {
     try {
       setLoadingState({ isLoading: true, error: null })
-      const notificationsData = await api.getNotifications()
+      
+      // Load notification settings
+      const settingsResponse = await api.getNotificationSettings()
+      const templatesResponse = await api.getNotificationTemplates()
+      
+      // Combine the responses into the expected format
+      const notificationsData: NotificationsData = {
+        settings: settingsResponse,
+        templates: templatesResponse,
+        preview: undefined,
+        history: []
+      }
+      
       setData(notificationsData)
 
-      // Initialize form state from loaded data
-      const config = (notificationsData as any).config || {}
+      // Initialize form state from loaded data (keeping existing channel config logic)
+      const config = {} as any
+      if (settingsResponse && settingsResponse.length > 0) {
+        const mainSettings = settingsResponse[0]
+        config.emby = { enabled: false, ...mainSettings.conditions?.emby }
+        config.telegram = { enabled: false, admin_users: [], regular_users: [], ...mainSettings.conditions?.telegram }
+        config.discord = { enabled: false, ...mainSettings.conditions?.discord }
+        config.wecom = { enabled: false, user_list: [], ...mainSettings.conditions?.wecom }
+        config.tmdb = { enabled: false, ...mainSettings.conditions?.tmdb }
+      }
+      
       const newFormState: FormState = {
         emby: config.emby || { enabled: false },
-        telegram: { ...{enabled: false, admin_users: [], regular_users: []}, ...config.telegram },
+        telegram: config.telegram || { enabled: false, admin_users: [], regular_users: [] },
         discord: config.discord || { enabled: false },
-        wecom: { ...{ enabled: false, user_list: [] }, ...config.wecom },
+        wecom: config.wecom || { enabled: false, user_list: [] },
         tmdb: config.tmdb || { enabled: false }
       }
       setFormState(newFormState)
@@ -87,8 +122,254 @@ export function Notifications() {
     loadNotifications()
   }, [])
 
+  useEffect(() => {
+    if (activeSection === 'templates' && data) {
+      loadTemplates()
+    }
+  }, [activeSection, data])
+
   const handleRefresh = () => {
     loadNotifications()
+  }
+
+  // Template management functions
+  const loadTemplates = async () => {
+    try {
+      const templatesData = await api.getNotificationTemplates()
+      const templatesObj: Record<string, NotificationTemplate> = {}
+      
+      // Convert array to object keyed by id
+      templatesData.forEach((template: any) => {
+        templatesObj[template.id] = template
+      })
+      
+      setTemplates(templatesObj)
+      
+      // Initialize editing state
+      const editingObj: Record<string, { title: string; text: string; image_template?: string }> = {}
+      const originalObj: Record<string, { title: string; text: string; image_template?: string }> = {}
+      
+      Object.entries(templatesObj).forEach(([id, template]) => {
+        editingObj[id] = {
+          title: template.title || '',
+          text: template.text || '',
+          image_template: template.image_template || ''
+        }
+        originalObj[id] = {
+          title: template.title || '',
+          text: template.text || '',
+          image_template: template.image_template || ''
+        }
+      })
+      
+      setEditingTemplates(editingObj)
+      setOriginalTemplates(originalObj)
+      
+      // Set default preview data for common event types
+      setPreviewData({
+        playback: {
+          user_name: 'test_user',
+          item_name: 'Example Movie',
+          item_image: 'https://via.placeholder.com/400x600?text=Movie+Poster',
+          client: 'Web Player',
+          device: 'Chrome Browser',
+          timestamp: new Date().toISOString()
+        },
+        login: {
+          user_name: 'test_user',
+          client: 'Web Player',
+          device: 'Chrome Browser',
+          timestamp: new Date().toISOString()
+        },
+        mark: {
+          user_name: 'test_user',
+          item_name: 'Example Movie',
+          item_image: 'https://via.placeholder.com/400x600?text=Movie+Poster',
+          mark_type: 'played',
+          timestamp: new Date().toISOString()
+        },
+        library: {
+          item_count: 15,
+          item_type: 'movies',
+          timestamp: new Date().toISOString()
+        },
+        default: {
+          message: 'This is a test notification',
+          timestamp: new Date().toISOString()
+        }
+      })
+      
+    } catch (error) {
+      console.error('Failed to load templates:', error)
+    }
+  }
+
+  const toggleTemplateExpansion = (templateId: string) => {
+    setExpandedTemplates(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(templateId)) {
+        newSet.delete(templateId)
+      } else {
+        newSet.add(templateId)
+      }
+      return newSet
+    })
+  }
+
+  const updateTemplateField = (templateId: string, field: string, value: string) => {
+    setEditingTemplates(prev => ({
+      ...prev,
+      [templateId]: {
+        ...prev[templateId],
+        [field]: value
+      }
+    }))
+    
+    // Clear any existing errors for this template
+    if (templateErrors[templateId]) {
+      setTemplateErrors(prev => ({
+        ...prev,
+        [templateId]: ''
+      }))
+    }
+    
+    // Trigger preview update with debouncing
+    triggerPreviewUpdate(templateId)
+  }
+
+  const triggerPreviewUpdate = useCallback(
+    debounce(async (templateId: string) => {
+      const editingTemplate = editingTemplates[templateId]
+      if (!editingTemplate || !templates[templateId]) return
+      
+      setPreviewLoading(prev => ({ ...prev, [templateId]: true }))
+      
+      try {
+        const previewContent = previewData[sampleEventType] || previewData.default
+        const result = await api.previewNotificationTemplate(templateId, previewContent)
+        
+        setPreviewResults(prev => ({
+          ...prev,
+          [templateId]: result
+        }))
+      } catch (error) {
+        console.error('Preview failed:', error)
+      } finally {
+        setPreviewLoading(prev => ({ ...prev, [templateId]: false }))
+      }
+    }, 500),
+    [editingTemplates, templates, previewData, sampleEventType]
+  )
+
+  const saveTemplate = async (templateId: string) => {
+    const editingTemplate = editingTemplates[templateId]
+    if (!editingTemplate) return
+    
+    // Validate template content
+    if (!editingTemplate.title.trim()) {
+      setTemplateErrors(prev => ({
+        ...prev,
+        [templateId]: '标题不能为空'
+      }))
+      return
+    }
+    
+    if (!editingTemplate.text.trim()) {
+      setTemplateErrors(prev => ({
+        ...prev,
+        [templateId]: '内容不能为空'
+      }))
+      return
+    }
+    
+    setTemplateLoading(prev => ({ ...prev, [templateId]: true }))
+    
+    try {
+      await api.updateNotificationTemplate(templateId, {
+        title: editingTemplate.title.trim(),
+        text: editingTemplate.text.trim(),
+        image_template: editingTemplate.image_template?.trim() || undefined
+      })
+      
+      // Update original state
+      setOriginalTemplates(prev => ({
+        ...prev,
+        [templateId]: { ...editingTemplate }
+      }))
+      
+      // Show success feedback
+      setFeedback({
+        message: `模板 "${templateId}" 已保存`,
+        type: 'success'
+      })
+      
+      setTimeout(() => {
+        setFeedback(null)
+      }, 3000)
+      
+    } catch (error) {
+      setTemplateErrors(prev => ({
+        ...prev,
+        [templateId]: error instanceof Error ? error.message : '保存失败'
+      }))
+    } finally {
+      setTemplateLoading(prev => ({ ...prev, [templateId]: false }))
+    }
+  }
+
+  const resetTemplate = (templateId: string) => {
+    const original = originalTemplates[templateId]
+    if (!original) return
+    
+    setEditingTemplates(prev => ({
+      ...prev,
+      [templateId]: { ...original }
+    }))
+    
+    // Clear errors
+    setTemplateErrors(prev => ({
+      ...prev,
+      [templateId]: ''
+    }))
+    
+    // Trigger preview update
+    triggerPreviewUpdate(templateId)
+  }
+
+  const hasTemplateChanges = (templateId: string): boolean => {
+    const current = editingTemplates[templateId]
+    const original = originalTemplates[templateId]
+    
+    if (!current || !original) return false
+    
+    return (
+      current.title !== original.title ||
+      current.text !== original.text ||
+      (current.image_template || '') !== (original.image_template || '')
+    )
+  }
+
+  const getTemplateIcon = (templateId: string) => {
+    const iconMap: Record<string, any> = {
+      default: MessageSquare,
+      playback: Play,
+      login: User,
+      mark: Bookmark,
+      library: Library
+    }
+    return iconMap[templateId] || FileText
+  }
+
+  const getJinjaHints = () => {
+    return [
+      '{{ user_name }} - 用户名',
+      '{{ item_name }} - 媒体名称',
+      '{{ client }} - 客户端',
+      '{{ device }} - 设备',
+      '{{ timestamp }} - 时间戳',
+      '{{ item_image }} - 媒体图片',
+      '{{ item_count }} - 项目数量'
+    ]
   }
 
   const isValidUrl = (url: string): boolean => {
@@ -270,6 +551,18 @@ export function Notifications() {
     navigator.clipboard.writeText(text)
     setCopiedField(field)
     setTimeout(() => setCopiedField(null), 2000)
+  }
+
+  // Debounce utility
+  function debounce<T extends (...args: any[]) => any>(
+    func: T,
+    wait: number
+  ): (...args: Parameters<T>) => void {
+    let timeout: ReturnType<typeof setTimeout> | null = null
+    return (...args: Parameters<T>) => {
+      if (timeout) clearTimeout(timeout)
+      timeout = setTimeout(() => func(...args), wait)
+    }
   }
 
   // 加载中状态
@@ -673,46 +966,257 @@ export function Notifications() {
         )}
 
         {activeSection === 'templates' && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold mb-4">通知模板</h2>
-            {data.templates.length === 0 ? (
-              <div className="text-center py-8">
-                <FileText className="w-12 h-12 text-[var(--color-text-muted)] mx-auto mb-3" />
-                <p className="text-[var(--color-text-muted)]">暂无通知模板</p>
-                <p className="text-sm text-[var(--color-text-muted)] mt-1">
-                  创建您的第一个通知模板
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold mb-2">通知模板</h2>
+                <p className="text-sm text-[var(--color-text-muted)]">
+                  管理五种通知模板的标题和内容，支持 Jinja 变量和实时预览
                 </p>
               </div>
-            ) : (
-              <div className="grid gap-4">
-                {data.templates.map((template) => (
-                  <div
-                    key={template.id}
-                    className="p-4 bg-[var(--color-content2)] rounded-lg border border-[var(--color-border)]"
-                  >
-                    <h3 className="font-medium mb-2">{template.name}</h3>
-                    <div className="space-y-2 text-sm">
-                      <div>
-                        <span className="text-[var(--color-text-muted)]">主题: </span>
-                        <span>{template.subject}</span>
-                      </div>
-                      <div>
-                        <span className="text-[var(--color-text-muted)]">类型: </span>
-                        <span className="px-2 py-1 bg-[var(--color-content1)] rounded text-xs">
-                          {template.template_type}
-                        </span>
-                      </div>
-                      {template.variables.length > 0 && (
-                        <div>
-                          <span className="text-[var(--color-text-muted)]">变量: </span>
-                          <span>{template.variables.join(', ')}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center gap-3">
+                <select
+                  value={sampleEventType}
+                  onChange={(e) => setSampleEventType(e.target.value)}
+                  className="px-3 py-2 bg-[var(--color-content2)] border border-[var(--color-border)] rounded-lg text-sm"
+                >
+                  <option value="playback">播放事件</option>
+                  <option value="login">登录事件</option>
+                  <option value="mark">标记事件</option>
+                  <option value="library">媒体库事件</option>
+                  <option value="default">默认事件</option>
+                </select>
               </div>
-            )}
+            </div>
+
+            {/* Jinja Hints */}
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                <div className="text-xs">
+                  <p className="text-blue-600 dark:text-blue-400 font-medium mb-1">Jinja 变量提示:</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-blue-600/80 dark:text-blue-400/80">
+                    {getJinjaHints().map((hint, index) => (
+                      <code key={index} className="bg-[var(--color-content1)] px-2 py-1 rounded text-xs">
+                        {hint}
+                      </code>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Template Accordions */}
+            <div className="space-y-3">
+              {Object.entries(templates).map(([templateId, template]) => {
+                const Icon = getTemplateIcon(templateId)
+                const isExpanded = expandedTemplates.has(templateId)
+                const editing = editingTemplates[templateId]
+                const hasChanges = hasTemplateChanges(templateId)
+                const isLoading = templateLoading[templateId]
+                const error = templateErrors[templateId]
+                const preview = previewResults[templateId]
+                const previewIsLoading = previewLoading[templateId]
+
+                if (!editing) return null
+
+                return (
+                  <motion.div
+                    key={templateId}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-[var(--color-content1)] rounded-xl border border-[var(--color-border)] overflow-hidden"
+                  >
+                    {/* Template Header */}
+                    <button
+                      onClick={() => toggleTemplateExpansion(templateId)}
+                      className="w-full p-4 text-left hover:bg-[var(--color-hover-overlay)] transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                            <Icon className="w-4 h-4 text-primary" />
+                          </div>
+                          <div>
+                            <h3 className="font-medium">{templateId}</h3>
+                            <p className="text-sm text-[var(--color-text-muted)]">
+                              {template.title}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {hasChanges && (
+                            <span className="text-xs bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 px-2 py-1 rounded">
+                              有未保存的更改
+                            </span>
+                          )}
+                          {isExpanded ? (
+                            <ChevronDown className="w-5 h-5 text-[var(--color-text-muted)]" />
+                          ) : (
+                            <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)]" />
+                          )}
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Template Content */}
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="border-t border-[var(--color-border)]"
+                      >
+                        <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {/* Template Editor */}
+                          <div className="space-y-4">
+                            <h4 className="font-medium flex items-center gap-2">
+                              <Code className="w-4 h-4" />
+                              模板编辑器
+                            </h4>
+
+                            {/* Title Field */}
+                            <div>
+                              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                                标题
+                              </label>
+                              <textarea
+                                value={editing.title}
+                                onChange={(e) => updateTemplateField(templateId, 'title', e.target.value)}
+                                className="w-full px-4 py-2 rounded-lg bg-[var(--color-content2)] border border-[var(--color-border)] focus:border-primary focus:outline-none resize-none"
+                                rows={2}
+                                placeholder="输入模板标题..."
+                              />
+                            </div>
+
+                            {/* Body Field */}
+                            <div>
+                              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                                内容
+                              </label>
+                              <textarea
+                                value={editing.text}
+                                onChange={(e) => updateTemplateField(templateId, 'text', e.target.value)}
+                                className="w-full px-4 py-2 rounded-lg bg-[var(--color-content2)] border border-[var(--color-border)] focus:border-primary focus:outline-none resize-none"
+                                rows={4}
+                                placeholder="输入模板内容，支持 Jinja 变量..."
+                              />
+                            </div>
+
+                            {/* Image Template Field */}
+                            <div>
+                              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                                图片模板 (可选)
+                              </label>
+                              <input
+                                type="text"
+                                value={editing.image_template || ''}
+                                onChange={(e) => updateTemplateField(templateId, 'image_template', e.target.value)}
+                                className="w-full px-4 py-2 rounded-lg bg-[var(--color-content2)] border border-[var(--color-border)] focus:border-primary focus:outline-none"
+                                placeholder="如: {{ item_image }}"
+                              />
+                            </div>
+
+                            {/* Error Display */}
+                            {error && (
+                              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
+                                <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                                <span className="text-sm text-red-600 dark:text-red-400">{error}</span>
+                              </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-3 justify-end pt-4 border-t border-[var(--color-border)]">
+                              <button
+                                onClick={() => resetTemplate(templateId)}
+                                disabled={!hasChanges || isLoading}
+                                className="px-4 py-2 rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-hover-overlay)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                                重置
+                              </button>
+                              <button
+                                onClick={() => saveTemplate(templateId)}
+                                disabled={!hasChanges || isLoading}
+                                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                              >
+                                {isLoading ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    保存中...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Save className="w-4 h-4" />
+                                    保存
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Live Preview */}
+                          <div className="space-y-4">
+                            <h4 className="font-medium flex items-center gap-2">
+                              <EyeIcon className="w-4 h-4" />
+                              实时预览
+                            </h4>
+
+                            {/* Preview Content */}
+                            <div className="bg-[var(--color-content2)] rounded-lg border border-[var(--color-border)] p-4">
+                              {previewIsLoading ? (
+                                <div className="flex items-center justify-center py-8">
+                                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                                  <span className="ml-2 text-[var(--color-text-muted)]">生成预览中...</span>
+                                </div>
+                              ) : preview ? (
+                                <div className="space-y-3">
+                                  <div>
+                                    <p className="text-xs text-[var(--color-text-muted)] mb-1">标题:</p>
+                                    <p className="font-medium">{preview.rendered_title}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-[var(--color-text-muted)] mb-1">内容:</p>
+                                    <p className="whitespace-pre-wrap">{preview.rendered_text}</p>
+                                  </div>
+                                  {preview.rendered_image && (
+                                    <div>
+                                      <p className="text-xs text-[var(--color-text-muted)] mb-1">图片:</p>
+                                      <img 
+                                        src={preview.rendered_image} 
+                                        alt="Preview"
+                                        className="max-w-full h-auto rounded border border-[var(--color-border)]"
+                                        onError={(e) => {
+                                          e.currentTarget.style.display = 'none'
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-center py-8 text-[var(--color-text-muted)]">
+                                  <Send className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                  <p className="text-sm">编辑内容将自动生成预览</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Sample Data */}
+                            <div className="text-xs text-[var(--color-text-muted)]">
+                              <p className="font-medium mb-1">预览数据 ({sampleEventType}):</p>
+                              <pre className="bg-[var(--color-content2)] p-2 rounded text-xs overflow-x-auto">
+                                {JSON.stringify(previewData[sampleEventType] || previewData.default, null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </motion.div>
+                )
+              })}
+            </div>
           </div>
         )}
 

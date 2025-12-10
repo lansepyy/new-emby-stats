@@ -171,10 +171,11 @@ export interface NotificationSettings {
 export interface NotificationTemplate {
   id: string
   name: string
-  subject: string
-  body: string
+  title: string
+  text: string
+  image_template?: string
   template_type: string
-  variables: string[]
+  variables?: string[]
   created_at?: string
   updated_at?: string
 }
