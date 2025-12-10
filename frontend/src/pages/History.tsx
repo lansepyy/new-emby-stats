@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { Card, PosterCard, PosterGridSkeleton } from '@/components/ui'
 import { useRecent } from '@/hooks/useStats'
 import type { FilterParams } from '@/services/api'
+import type { RecentItem } from '@/types'
 import { Search, X, Film } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 
@@ -9,8 +10,12 @@ interface HistoryProps {
   filterParams: FilterParams
 }
 
+interface HistoryListItemProps {
+  item: RecentItem
+}
+
 // 列表项组件
-function HistoryListItem({ item }: { item: any }) {
+function HistoryListItem({ item }: HistoryListItemProps) {
   const [imageError, setImageError] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
 

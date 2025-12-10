@@ -56,7 +56,7 @@ export function ServerManagementPanel({ isOpen, onClose }: ServerManagementPanel
     try {
       if (editingServer) {
         // 编辑模式下只发送非空字段，避免覆盖原有的数据库路径
-        const updateData: Record<string, any> = {}
+        const updateData: Record<string, string | boolean> = {}
         if (formData.name) updateData.name = formData.name
         if (formData.emby_url) updateData.emby_url = formData.emby_url
         if (formData.playback_db) updateData.playback_db = formData.playback_db
@@ -72,7 +72,7 @@ export function ServerManagementPanel({ isOpen, onClose }: ServerManagementPanel
         // 如果是默认服务器，设置为当前服务器
         if (formData.is_default) {
           await refreshServers()
-          const newServer = servers.find(s => s.id === result.server_id) || servers[0]
+          const newServer = servers.find((s: Server) => s.id === result.server_id) || servers[0]
           if (newServer) {
             setCurrentServer(newServer)
           }
@@ -92,8 +92,9 @@ export function ServerManagementPanel({ isOpen, onClose }: ServerManagementPanel
           is_default: false,
         })
       }, 1000)
-    } catch (err: any) {
-      setError(err.message || '操作失败')
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : '操作失败'
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -110,9 +111,9 @@ export function ServerManagementPanel({ isOpen, onClose }: ServerManagementPanel
       await api.deleteServer(serverId)
       // 如果删除的是当前服务器，切换到默认服务器
       if (currentServer?.id === serverId) {
-        const remainingServers = servers.filter(s => s.id !== serverId)
+        const remainingServers = servers.filter((s: Server) => s.id !== serverId)
         if (remainingServers.length > 0) {
-          const defaultServer = remainingServers.find(s => s.is_default) || remainingServers[0]
+          const defaultServer = remainingServers.find((s: Server) => s.is_default) || remainingServers[0]
           if (defaultServer) {
             setCurrentServer(defaultServer)
           }
@@ -120,8 +121,9 @@ export function ServerManagementPanel({ isOpen, onClose }: ServerManagementPanel
       }
       await refreshServers()
       setSuccess('服务器删除成功')
-    } catch (err: any) {
-      setError(err.message || '删除失败')
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : '删除失败'
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }

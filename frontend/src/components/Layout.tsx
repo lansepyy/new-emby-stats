@@ -97,7 +97,7 @@ export function Layout({ children, hideChrome = false }: LayoutProps) {
                     <select
                       value={currentServer?.id || ''}
                       onChange={(e) => {
-                        const server = servers.find(s => s.id === e.target.value)
+                        const server = servers.find((s: typeof servers[0]) => s.id === e.target.value)
                         if (server) {
                           setCurrentServer(server)
                         }
