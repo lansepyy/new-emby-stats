@@ -3,11 +3,12 @@
 处理通知设置、模板管理等 API 端点
 """
 from typing import Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response, BackgroundTasks
 from pydantic import BaseModel
 import logging
 
 from notification_settings import notification_settings_store
+from services.notification_service import notification_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
@@ -41,6 +42,20 @@ class TemplatePreviewRequest(BaseModel):
     """模板预览请求"""
     template_id: str
     content: Dict[str, Any]
+
+
+@router.post("/webhook")
+async def webhook(request: Request, background_tasks: BackgroundTasks):
+    """
+    接收 Emby Webhook 事件
+    """
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+    
+    background_tasks.add_task(notification_service.process_event, payload)
+    return Response(status_code=200)
 
 
 @router.get("/settings")
@@ -209,32 +224,9 @@ async def preview_template(request: TemplatePreviewRequest):
         if not template_dict:
             raise HTTPException(status_code=404, detail="模板不存在")
         
-        # 简单的模板渲染（使用字符串替换）
-        # 注意：这里只是基本的模板渲染，实际项目中可能需要更强大的模板引擎
+        # 使用 NotificationService 进行渲染
         try:
-            # 使用内容数据进行简单替换
-            title_rendered = template_dict['title']
-            text_rendered = template_dict['text']
-            
-            for key, value in request.content.items():
-                placeholder = f"{{{{ {key} }}}}"
-                title_rendered = title_rendered.replace(placeholder, str(value))
-                text_rendered = text_rendered.replace(placeholder, str(value))
-            
-            # 处理图片模板
-            image_rendered = None
-            if template_dict.get('image_template') and request.content:
-                image_rendered = template_dict['image_template']
-                for key, value in request.content.items():
-                    placeholder = f"{{{{ {key} }}}}"
-                    image_rendered = image_rendered.replace(placeholder, str(value))
-            
-            # 清理未替换的占位符
-            import re
-            title_rendered = re.sub(r'\{\{[^}]+\}\}', '', title_rendered).strip()
-            text_rendered = re.sub(r'\{\{[^}]+\}\}', '', text_rendered).strip()
-            if image_rendered:
-                image_rendered = re.sub(r'\{\{[^}]+\}\}', '', image_rendered).strip()
+            rendered = await notification_service.preview_notification(request.template_id, request.content)
             
             return {
                 "success": True,
@@ -243,13 +235,15 @@ async def preview_template(request: TemplatePreviewRequest):
                     "original_title": template_dict['title'],
                     "original_text": template_dict['text'],
                     "original_image": template_dict.get('image_template'),
-                    "rendered_title": title_rendered,
-                    "rendered_text": text_rendered,
-                    "rendered_image": image_rendered,
+                    "rendered_title": rendered['title'],
+                    "rendered_text": rendered['text'],
+                    "rendered_image": rendered['image'],
                     "sample_data": request.content
                 }
             }
             
+        except ValueError as e:
+             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"模板渲染失败: {str(e)}")
         

@@ -28,6 +28,7 @@ PUBLIC_PATHS = {
     "/api/auth/login",
     "/api/auth/check",
     "/api/auth/logout",
+    "/api/notifications/webhook",
     "/manifest.json",
     "/sw.js",
 }
