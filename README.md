@@ -77,6 +77,8 @@
 
 创建 `docker-compose.yml`：
 
+#### 使用 Docker Hub 镜像
+
 ```yaml
 services:
   emby-stats:
@@ -99,6 +101,32 @@ services:
     restart: unless-stopped
 ```
 
+#### 使用 GitHub Container Registry 镜像
+
+也可以使用自动构建的 GHCR 镜像（最新开发版本）：
+
+```yaml
+services:
+  emby-stats:
+    image: ghcr.io/lansepyy/emby-stats:latest
+    container_name: emby-stats
+    ports:
+      - "8899:8000"
+    volumes:
+      - /path/to/emby/data:/data:ro
+      - /path/to/emby-stats/config:/config
+    environment:
+      - EMBY_URL=http://your-emby-server:8096
+      - EMBY_API_KEY=your_api_key
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+```
+
+> **镜像标签说明：**
+> - `latest` - 最新开发版本（main 分支）
+> - `main-<short-hash>` - 特定提交的开发版本
+> - 版本标签 - 基于 Git 发布标签（如 `v1.7`, `v1.71` 等）
+
 启动服务：
 
 ```bash
@@ -109,6 +137,8 @@ docker compose up -d
 
 ### Docker Run
 
+**使用 Docker Hub 镜像：**
+
 ```bash
 docker run -d \
   --name emby-stats \
@@ -118,6 +148,19 @@ docker run -d \
   -e EMBY_URL=http://your-emby-server:8096 \
   -e TZ=Asia/Shanghai \
   qc0624/emby-stats:latest
+```
+
+**使用 GitHub Container Registry 镜像：**
+
+```bash
+docker run -d \
+  --name emby-stats \
+  -p 8899:8000 \
+  -v /path/to/emby/data:/data:ro \
+  -v /path/to/emby-stats/config:/config \
+  -e EMBY_URL=http://your-emby-server:8096 \
+  -e TZ=Asia/Shanghai \
+  ghcr.io/lansepyy/emby-stats:latest
 ```
 
 ---

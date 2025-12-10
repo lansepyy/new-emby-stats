@@ -790,6 +790,97 @@ docker logs -f emby-stats
 
 ---
 
+## 自动化 Docker 镜像构建
+
+本项目使用 GitHub Actions 自动构建和推送 Docker 镜像到 GitHub Container Registry (ghcr.io)。
+
+### 工作流配置
+
+工作流文件位置：`.github/workflows/docker-build.yml`
+
+**触发条件：**
+- ✅ **手动触发** - 通过 GitHub Actions UI 手动执行工作流
+- ✅ **自动触发** - 推送到 `main` 或 `master` 分支时
+- ✅ **PR 测试** - 提交 Pull Request 时构建测试（不推送）
+
+**变更监听：** 仅在以下文件变更时触发：
+- `Dockerfile` - Docker 配置变更
+- `backend/**` - 后端代码变更
+- `frontend/**` - 前端代码变更
+- `docker-compose.yml` - 容器编排配置变更
+
+### 镜像标签
+
+构建完成后，镜像会被标记为：
+
+| 标签格式 | 说明 | 示例 |
+|---------|------|------|
+| `latest` | 最新版本（仅 main/master 分支） | `ghcr.io/lansepyy/emby-stats:latest` |
+| `<branch-name>` | 分支标签 | `ghcr.io/lansepyy/emby-stats:main` |
+| `<branch>-<short-hash>` | 提交哈希标签 | `ghcr.io/lansepyy/emby-stats:main-a1b2c3d` |
+| `v<version>` | 版本标签（从 Git Tag） | `ghcr.io/lansepyy/emby-stats:v1.7` |
+| `<major>.<minor>` | 语义版本（从 Git Tag） | `ghcr.io/lansepyy/emby-stats:1.7` |
+
+### 手动触发工作流
+
+在 GitHub 仓库页面操作：
+
+1. 进入 **Actions** 标签
+2. 选择左侧的 **"Build and Push Docker Image"** 工作流
+3. 点击 **"Run workflow"** 按钮
+4. 选择分支（默认 main）
+5. 点击 **"Run workflow"** 确认
+
+工作流执行完成后，镜像会推送到 `ghcr.io/lansepyy/emby-stats`。
+
+### 拉取镜像
+
+```bash
+# 拉取最新镜像
+docker pull ghcr.io/lansepyy/emby-stats:latest
+
+# 拉取特定分支版本
+docker pull ghcr.io/lansepyy/emby-stats:main
+
+# 拉取特定提交版本
+docker pull ghcr.io/lansepyy/emby-stats:main-a1b2c3d
+
+# 拉取发布版本
+docker pull ghcr.io/lansepyy/emby-stats:v1.7
+```
+
+### 工作流输出
+
+工作流执行成功后，会在 **Summary** 中显示：
+- ✅ 构建状态
+- 镜像 Registry 地址
+- 完整的镜像拉取命令
+
+### 权限配置
+
+确保 GitHub Token 具有必要权限：
+- `contents: read` - 读取仓库内容
+- `packages: write` - 推送容器镜像到 GHCR
+
+这些权限在工作流中已配置，使用 `secrets.GITHUB_TOKEN` 自动认证。
+
+### 故障排除
+
+**工作流执行失败？**
+
+1. 检查 GitHub Actions 日志中的错误信息
+2. 确认 Dockerfile 和代码无语法错误
+3. 验证前端和后端依赖安装正常
+4. 查看构建日志中的具体失败阶段
+
+**镜像推送失败？**
+
+1. 确认 GitHub Token 权限正确（需要 `packages:write`）
+2. 检查仓库公开性设置
+3. 验证 GHCR 注册表可访问
+
+---
+
 ## 版本发布流程
 
 ### 1. 更新版本号
@@ -805,6 +896,8 @@ docker logs -f emby-stats
 
 ### 3. 构建和推送
 
+**Docker Hub（手动推送）：**
+
 ```bash
 # 构建 Docker 镜像
 docker build -t qc0624/emby-stats:latest .
@@ -815,19 +908,40 @@ docker push qc0624/emby-stats:latest
 docker push qc0624/emby-stats:v1.xx
 ```
 
+**GitHub Container Registry（自动化）：**
+
+镜像会通过 GitHub Actions 工作流自动构建并推送到 GHCR：
+
+```bash
+# 工作流会自动构建以下镜像：
+# - ghcr.io/lansepyy/emby-stats:latest (main 分支最新)
+# - ghcr.io/lansepyy/emby-stats:v1.xx (基于 Git 标签)
+# - ghcr.io/lansepyy/emby-stats:main-<hash> (提交哈希)
+
+# 无需手动操作，只需推送代码即可
+```
+
 ### 4. 提交代码
 
 ```bash
 git add .
 git commit -m "Release v1.xx: 功能描述"
 git push origin main
+
+# GitHub Actions 将自动触发并构建镜像到 GHCR
 ```
 
-### 5. 更新 GitHub 文档（可选）
+### 5. 创建发布标签（可选）
 
-使用 GitHub API 更新 README 和 CHANGELOG：
+为了生成语义化版本标签，创建 Git Tag：
+
 ```bash
-# 使用项目配置的 GitHub Token
+git tag -a v1.xx -m "Release v1.xx: 功能描述"
+git push origin v1.xx
+
+# 工作流将自动构建以下镜像标签：
+# - ghcr.io/lansepyy/emby-stats:v1.xx
+# - ghcr.io/lansepyy/emby-stats:1.xx
 ```
 
 ---
