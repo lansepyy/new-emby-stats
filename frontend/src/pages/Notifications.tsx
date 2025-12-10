@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
   Bell, Settings, FileText, Send, RefreshCw, AlertCircle, CheckCircle, Clock,
@@ -62,7 +62,7 @@ export function Notifications() {
       setData(notificationsData)
 
       // Initialize form state from loaded data
-      const config = (notificationsData as any).config || {}
+      const config = (notificationsData as unknown as { config?: Record<string, unknown> }).config || {}
       const newFormState: FormState = {
         emby: config.emby || { enabled: false },
         telegram: { ...{enabled: false, admin_users: [], regular_users: []}, ...config.telegram },
@@ -161,7 +161,7 @@ export function Notifications() {
       .filter(item => item.length > 0)
   }
 
-  const handleInputChange = (channel: keyof FormState, field: string, value: any) => {
+  const handleInputChange = useCallback((channel: keyof FormState, field: string, value: string | boolean | string[]) => {
     setFormState(prev => ({
       ...prev,
       [channel]: {
@@ -175,7 +175,7 @@ export function Notifications() {
         [`${channel}.${field}`]: ''
       }))
     }
-  }
+  }, [validationErrors])
 
   const handleListInputChange = (channel: keyof FormState, field: string, value: string) => {
     const arrayValue = parseListInput(value)
@@ -425,7 +425,6 @@ export function Notifications() {
                 <div className="space-y-4">
                   <FormField
                     label="Server URL"
-                    type="text"
                     value={formState.emby.server_url || ''}
                     onChange={(value) => handleInputChange('emby', 'server_url', value.trim())}
                     placeholder="https://emby.example.com"
@@ -435,7 +434,6 @@ export function Notifications() {
 
                   <FormField
                     label="API Token"
-                    type="password"
                     value={formState.emby.api_token || ''}
                     onChange={(value) => handleInputChange('emby', 'api_token', value)}
                     placeholder="Your Emby API token"
@@ -479,7 +477,6 @@ export function Notifications() {
                 <div className="space-y-4">
                   <FormField
                     label="Bot Token"
-                    type="password"
                     value={formState.telegram.bot_token || ''}
                     onChange={(value) => handleInputChange('telegram', 'bot_token', value)}
                     placeholder="Your Telegram bot token"
@@ -492,7 +489,6 @@ export function Notifications() {
 
                   <FormField
                     label="Admin Users"
-                    type="text"
                     value={(formState.telegram.admin_users || []).join(', ')}
                     onChange={(value) => handleListInputChange('telegram', 'admin_users', value)}
                     placeholder="123456789, 987654321"
@@ -501,7 +497,6 @@ export function Notifications() {
 
                   <FormField
                     label="Regular Users"
-                    type="text"
                     value={(formState.telegram.regular_users || []).join(', ')}
                     onChange={(value) => handleListInputChange('telegram', 'regular_users', value)}
                     placeholder="111111111, 222222222"
@@ -520,7 +515,6 @@ export function Notifications() {
                 <div className="space-y-4">
                   <FormField
                     label="Webhook URL"
-                    type="text"
                     value={formState.discord.webhook_url || ''}
                     onChange={(value) => handleInputChange('discord', 'webhook_url', value.trim())}
                     placeholder="https://discordapp.com/api/webhooks/..."
@@ -530,7 +524,6 @@ export function Notifications() {
 
                   <FormField
                     label="Bot Username"
-                    type="text"
                     value={formState.discord.username || ''}
                     onChange={(value) => handleInputChange('discord', 'username', value)}
                     placeholder="NotificationBot"
@@ -539,7 +532,6 @@ export function Notifications() {
 
                   <FormField
                     label="Avatar URL"
-                    type="text"
                     value={formState.discord.avatar_url || ''}
                     onChange={(value) => handleInputChange('discord', 'avatar_url', value.trim())}
                     placeholder="https://example.com/avatar.png"
@@ -559,7 +551,6 @@ export function Notifications() {
                 <div className="space-y-4">
                   <FormField
                     label="Corp ID"
-                    type="text"
                     value={formState.wecom.corp_id || ''}
                     onChange={(value) => handleInputChange('wecom', 'corp_id', value.trim())}
                     placeholder="Your WeCom Corp ID"
@@ -568,7 +559,6 @@ export function Notifications() {
 
                   <FormField
                     label="Corp Secret"
-                    type="password"
                     value={formState.wecom.corp_secret || ''}
                     onChange={(value) => handleInputChange('wecom', 'corp_secret', value)}
                     placeholder="Your WeCom Corp Secret"
@@ -580,7 +570,6 @@ export function Notifications() {
 
                   <FormField
                     label="Agent ID"
-                    type="text"
                     value={formState.wecom.agent_id || ''}
                     onChange={(value) => handleInputChange('wecom', 'agent_id', value.trim())}
                     placeholder="Your WeCom Agent ID"
@@ -589,7 +578,6 @@ export function Notifications() {
 
                   <FormField
                     label="Proxy URL"
-                    type="text"
                     value={formState.wecom.proxy_url || ''}
                     onChange={(value) => handleInputChange('wecom', 'proxy_url', value.trim())}
                     placeholder="https://proxy.example.com"
@@ -598,7 +586,6 @@ export function Notifications() {
 
                   <FormField
                     label="User List"
-                    type="text"
                     value={(formState.wecom.user_list || []).join(', ')}
                     onChange={(value) => handleListInputChange('wecom', 'user_list', value)}
                     placeholder="user1, user2, user3"
@@ -617,7 +604,6 @@ export function Notifications() {
                 <div className="space-y-4">
                   <FormField
                     label="API Key"
-                    type="password"
                     value={formState.tmdb.api_key || ''}
                     onChange={(value) => handleInputChange('tmdb', 'api_key', value)}
                     placeholder="Your TMDB API key"
@@ -630,7 +616,6 @@ export function Notifications() {
 
                   <FormField
                     label="Base URL"
-                    type="text"
                     value={formState.tmdb.base_url || ''}
                     onChange={(value) => handleInputChange('tmdb', 'base_url', value.trim())}
                     placeholder="https://api.themoviedb.org"
@@ -810,7 +795,6 @@ function ChannelCard({ title, description, enabled, onEnabledChange, children }:
 
 interface FormFieldProps {
   label: string
-  type: string
   value: string
   onChange: (value: string) => void
   placeholder?: string
