@@ -6,19 +6,21 @@ services:
     ports:
       - "8899:8000"
     volumes:
-      # 挂载 Emby 数据目录（只读）
-      - /path/to/emby/data:/data:ro
-      # 配置目录（可写，用于保存名称映射等配置）
-      - emby-stats-config:/config
+      # Emby数据库文件挂载（只读，用于读取播放记录）
+      - /path/to/emby/data/playback_reporting.db:/emby-data/playback_reporting.db:ro
+      - /path/to/emby/data/users.db:/emby-data/users.db:ro
+      - /path/to/emby/data/authentication.db:/emby-data/authentication.db:ro
+      # Webhook配置目录（可写，用于保存webhook通知配置）
+      - emby-stats-data:/data
     environment:
       # 时区设置
       - TZ=Asia/Shanghai
       # 播放记录插件数据库路径（容器内路径）
-      - PLAYBACK_DB=/data/playback_reporting.db
+      - PLAYBACK_DB=/emby-data/playback_reporting.db
       # 用户数据库路径（容器内路径）
-      - USERS_DB=/data/users.db
+      - USERS_DB=/emby-data/users.db
       # 认证数据库路径（容器内路径，用于自动获取 API Key）
-      - AUTH_DB=/data/authentication.db
+      - AUTH_DB=/emby-data/authentication.db
       # Emby 服务器地址
       - EMBY_URL=http://your-emby-server:8096
       # Emby API Key（可选，不填则自动从数据库获取）
@@ -29,4 +31,5 @@ services:
       # - TZ_OFFSET=8
 
 volumes:
-  emby-stats-config:
+  # 数据卷用于持久化webhook配置
+  emby-stats-data:

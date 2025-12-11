@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
-from routers import stats_router, media_router, auth_router
+from routers import stats_router, media_router, auth_router, webhook_router, config_router
 from routers.auth import get_current_session
 
 # 创建应用实例
@@ -28,6 +28,7 @@ PUBLIC_PATHS = {
     "/api/auth/login",
     "/api/auth/check",
     "/api/auth/logout",
+    "/api/webhook/emby",  # Webhook不需要认证
     "/manifest.json",
     "/sw.js",
 }
@@ -71,6 +72,8 @@ async def auth_middleware(request: Request, call_next):
 app.include_router(auth_router)
 app.include_router(stats_router)
 app.include_router(media_router)
+app.include_router(webhook_router)
+app.include_router(config_router)
 
 # 静态文件服务
 frontend_path = "/app/frontend"

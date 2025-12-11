@@ -1,59 +1,36 @@
-"""
-配置管理模块
-集中管理所有环境变量和配置项
-"""
-import os
+"""配置存储管理"""
 import json
+import os
+from typing import Dict, Any
+import logging
 
+logger = logging.getLogger(__name__)
 
-class Settings:
-    """应用配置"""
+CONFIG_FILE = "/data/webhook_config.json"
 
-    # 数据库路径
-    PLAYBACK_DB: str = os.getenv("PLAYBACK_DB", "/data/playback_reporting.db")
-    USERS_DB: str = os.getenv("USERS_DB", "/data/users.db")
-    AUTH_DB: str = os.getenv("AUTH_DB", "/data/authentication.db")
-
-    # Emby 服务器配置
-    EMBY_URL: str = os.getenv("EMBY_URL", "http://localhost:8096")
-    EMBY_API_KEY: str = os.getenv("EMBY_API_KEY", "")
-
-    # 播放过滤配置
-    # 最小播放时长过滤（秒），低于此时长的记录将被忽略，0 表示不过滤
-    MIN_PLAY_DURATION: int = int(os.getenv("MIN_PLAY_DURATION", "0"))
-
-    # 时区偏移（小时），用于 SQLite 查询时间转换，上海时区为 +8
-    TZ_OFFSET: int = int(os.getenv("TZ_OFFSET", "8"))
-
-    # 缓存配置
-    ITEM_CACHE_MAX_SIZE: int = 500
-    ITEM_CACHE_EVICT_COUNT: int = 100
-
-    # ============= Webhook 通知配置 =============
-    
-    # Telegram配置
-    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    TELEGRAM_ADMINS: list = json.loads(os.getenv("TELEGRAM_ADMINS", "[]"))
-    TELEGRAM_USERS: list = json.loads(os.getenv("TELEGRAM_USERS", "[]"))
-    
-    # 企业微信配置
-    WECOM_CORP_ID: str = os.getenv("WECOM_CORP_ID", "")
-    WECOM_SECRET: str = os.getenv("WECOM_SECRET", "")
-    WECOM_AGENT_ID: str = os.getenv("WECOM_AGENT_ID", "")
-    WECOM_PROXY_URL: str = os.getenv("WECOM_PROXY_URL", "https://qyapi.weixin.qq.com")
-    WECOM_TO_USER: str = os.getenv("WECOM_TO_USER", "@all")
-    
-    # Discord配置
-    DISCORD_WEBHOOK_URL: str = os.getenv("DISCORD_WEBHOOK_URL", "")
-    DISCORD_USERNAME: str = os.getenv("DISCORD_USERNAME", "Emby通知")
-    DISCORD_AVATAR_URL: str = os.getenv("DISCORD_AVATAR_URL", "")
-    
-    # TMDB配置
-    TMDB_API_KEY: str = os.getenv("TMDB_API_KEY", "")
-    TMDB_IMAGE_BASE_URL: str = os.getenv("TMDB_IMAGE_BASE_URL", "https://image.tmdb.org/t/p/original")
-    
-    # 通知模板配置
-    NOTIFICATION_TEMPLATES: dict = {
+DEFAULT_CONFIG = {
+    "telegram": {
+        "bot_token": "",
+        "admins": [],
+        "users": []
+    },
+    "wecom": {
+        "corp_id": "",
+        "secret": "",
+        "agent_id": "",
+        "proxy_url": "https://qyapi.weixin.qq.com",
+        "to_user": "@all"
+    },
+    "discord": {
+        "webhook_url": "",
+        "username": "Emby通知",
+        "avatar_url": ""
+    },
+    "tmdb": {
+        "api_key": "",
+        "image_base_url": "https://image.tmdb.org/t/p/original"
+    },
+    "templates": {
         "default": {
             "title": "{% if action == '新入库' and media_type == '电影' %}🎬 {% elif action == '新入库' and media_type == '剧集' %}📺 {% elif action == '新入库' and media_type == '有声书' %}📚 {% elif action == '新入库' %}🆕 {% elif action == '测试' %}🧪 {% elif action == '开始播放' %}▶️ {% elif action == '停止播放' %}⏹️ {% elif action == '登录成功' %}✅ {% elif action == '登录失败' %}❌ {% elif action == '标记了' %}🏷️ {% endif %}{% if user_name %}【{{ user_name }}】{% endif %}{{ action }}{% if media_type %} {{ media_type }} {% endif %}{{ item_name }}",
             "text": "{% if rating %}⭐ 评分：{{ rating }}/10\n{% endif %}📚 类型：{{ media_type }}\n{% if progress %}🔄 进度：{{ progress }}%\n{% endif %}{% if ip_address %}🌐 IP地址：{{ ip_address }}\n{% endif %}{% if device_name %}📱 设备：{{ client }} {{ device_name }}\n{% endif %}{% if size %}💾 大小：{{ size }}\n{% endif %}{% if tmdb_id %}🎬 TMDB ID：{{ tmdb_id }}\n{% endif %}{% if imdb_id %}🎞️ IMDB ID：{{ imdb_id }}\n{% endif %}🕒 时间：{{ now_time }}\n{% if overview %}\n📝 剧情：{{ overview }}{% endif %}"
@@ -75,6 +52,77 @@ class Settings:
             "text": "{% if rating %}⭐ 评分：{{ rating }}\n{% endif %}📺 类型：{{ media_type }}\n🕒 时间：{{ now_time }}\n{% if overview %}📝 简介：{{ overview }}{% endif %}"
         }
     }
+}
 
 
-settings = Settings()
+class ConfigStorage:
+    """配置文件存储管理"""
+    
+    def __init__(self, config_file: str = CONFIG_FILE):
+        self.config_file = config_file
+        self._ensure_config_exists()
+    
+    def _ensure_config_exists(self):
+        """确保配置文件存在"""
+        if not os.path.exists(self.config_file):
+            # 确保目录存在
+            os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
+            # 创建默认配置
+            self.save_config(DEFAULT_CONFIG)
+            logger.info(f"创建默认配置文件: {self.config_file}")
+    
+    def load_config(self) -> Dict[str, Any]:
+        """加载配置"""
+        try:
+            with open(self.config_file, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            logger.info("配置加载成功")
+            return config
+        except Exception as e:
+            logger.error(f"加载配置失败: {str(e)}")
+            return DEFAULT_CONFIG.copy()
+    
+    def save_config(self, config: Dict[str, Any]):
+        """保存配置"""
+        try:
+            with open(self.config_file, 'w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+            logger.info("配置保存成功")
+        except Exception as e:
+            logger.error(f"保存配置失败: {str(e)}")
+            raise
+    
+    def get_telegram_config(self) -> Dict[str, Any]:
+        """获取Telegram配置"""
+        config = self.load_config()
+        return config.get("telegram", DEFAULT_CONFIG["telegram"])
+    
+    def get_wecom_config(self) -> Dict[str, Any]:
+        """获取企业微信配置"""
+        config = self.load_config()
+        return config.get("wecom", DEFAULT_CONFIG["wecom"])
+    
+    def get_discord_config(self) -> Dict[str, Any]:
+        """获取Discord配置"""
+        config = self.load_config()
+        return config.get("discord", DEFAULT_CONFIG["discord"])
+    
+    def get_tmdb_config(self) -> Dict[str, Any]:
+        """获取TMDB配置"""
+        config = self.load_config()
+        return config.get("tmdb", DEFAULT_CONFIG["tmdb"])
+    
+    def get_templates(self) -> Dict[str, Any]:
+        """获取通知模板"""
+        config = self.load_config()
+        return config.get("templates", DEFAULT_CONFIG["templates"])
+    
+    def update_section(self, section: str, data: Dict[str, Any]):
+        """更新配置的某个部分"""
+        config = self.load_config()
+        config[section] = data
+        self.save_config(config)
+
+
+# 全局配置存储实例
+config_storage = ConfigStorage()

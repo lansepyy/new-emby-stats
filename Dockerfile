@@ -30,8 +30,8 @@ COPY backend/ .
 # 复制构建好的前端代码
 COPY --from=frontend-builder /app/frontend/dist /app/frontend
 
-# 创建可写的配置目录
-RUN mkdir -p /config
+# 创建数据目录（用于存储webhook配置）
+RUN mkdir -p /data && chmod 777 /data
 
 # 暴露端口
 EXPOSE 8000
