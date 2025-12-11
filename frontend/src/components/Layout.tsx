@@ -1,15 +1,13 @@
 import { useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Chip } from '@/components/ui'
-import { Play, LayoutDashboard, Flame, Users, Monitor, History, FileText, LogOut, Sun, Moon, Filter, Settings, Server, Bell } from 'lucide-react'
+import { Play, LayoutDashboard, Flame, Users, Monitor, History, FileText, LogOut, Sun, Moon, Filter, Settings, Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useFilter } from '@/contexts/FilterContext'
-import { useServer } from '@/contexts/ServerContext'
 import { FilterPanel } from '@/components/FilterPanel'
 import { NameMappingPanel } from '@/components/NameMappingPanel'
-import { ServerManagementPanel } from '@/components/ServerManagementPanel'
 
 interface LayoutProps {
   children: (props: { activeTab: string; refreshKey: number }) => ReactNode
@@ -36,12 +34,10 @@ export function Layout({ children, hideChrome = false }: LayoutProps) {
   const { username, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const { filters, options, setDays, hasActiveFilters, activeFilterCount } = useFilter()
-  const { currentServer, servers, setCurrentServer } = useServer()
   const [activeTab, setActiveTab] = useState('overview')
   const [refreshKey] = useState(0)
   const [filterPanelOpen, setFilterPanelOpen] = useState(false)
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false)
-  const [serverPanelOpen, setServerPanelOpen] = useState(false)
 
   return (
     <div className={cn('min-h-screen', hideChrome ? 'pb-6' : 'pb-24')}>
@@ -91,36 +87,6 @@ export function Layout({ children, hideChrome = false }: LayoutProps) {
                 )}
               </button>
               <div className="ml-1 sm:ml-2 pl-1 sm:pl-2 border-l border-[var(--color-border)] flex items-center gap-1 sm:gap-2">
-                {/* 服务器选择器 */}
-                {servers.length > 1 && (
-                  <div className="relative">
-                    <select
-                      value={currentServer?.id || ''}
-                      onChange={(e) => {
-                        const server = servers.find(s => s.id === e.target.value)
-                        if (server) {
-                          setCurrentServer(server)
-                        }
-                      }}
-                      className="px-2 py-1.5 text-xs rounded-lg bg-content1 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-foreground focus:outline-none focus:border-primary transition-colors appearance-none pr-6 max-w-[120px] sm:max-w-[150px] truncate"
-                      title={currentServer?.name}
-                    >
-                      {servers.map((server) => (
-                        <option key={server.id} value={server.id}>
-                          {server.name}
-                        </option>
-                      ))}
-                    </select>
-                    <Server className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--color-text-muted)] pointer-events-none" />
-                  </div>
-                )}
-                <button
-                  onClick={() => setServerPanelOpen(true)}
-                  className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-foreground hover:bg-[var(--color-hover-overlay)] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                  title="服务器管理"
-                >
-                  <Server className="w-4 h-4" />
-                </button>
                 <span className="text-xs text-[var(--color-text-muted)] hidden sm:inline">{username}</span>
                 <button
                   onClick={() => setSettingsPanelOpen(true)}
@@ -171,12 +137,6 @@ export function Layout({ children, hideChrome = false }: LayoutProps) {
             onClose={() => setSettingsPanelOpen(false)}
             availableClients={options?.clients || []}
             availableDevices={options?.devices || []}
-          />
-
-          {/* Server Management Panel */}
-          <ServerManagementPanel
-            isOpen={serverPanelOpen}
-            onClose={() => setServerPanelOpen(false)}
           />
 
           {/* 底部 Tab 导航 - 面板打开时隐藏，避免遮挡 */}
