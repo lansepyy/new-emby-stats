@@ -177,8 +177,9 @@ export function NotificationTemplates({ onBack }: NotificationTemplatesProps) {
                   [activeTemplate]: { ...templates[activeTemplate], title: e.target.value }
                 })}
                 rows={3}
-                className="w-full px-4 py-3 bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+                className="w-full px-4 py-3 bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm whitespace-pre"
                 placeholder="输入标题模板..."
+                spellCheck={false}
               />
             </div>
 
@@ -191,8 +192,9 @@ export function NotificationTemplates({ onBack }: NotificationTemplatesProps) {
                   [activeTemplate]: { ...templates[activeTemplate], text: e.target.value }
                 })}
                 rows={12}
-                className="w-full px-4 py-3 bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+                className="w-full px-4 py-3 bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm whitespace-pre"
                 placeholder="输入内容模板..."
+                spellCheck={false}
               />
             </div>
           </div>
