@@ -154,7 +154,7 @@ export function Layout({ children, hideChrome = false }: LayoutProps) {
                 }}
                 className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
               >
-                <div className="flex items-center gap-1 px-2 py-2 glass rounded-2xl">
+                <div className="flex items-center gap-1 px-2 py-2 bg-surface border border-border shadow-lg rounded-2xl">
                   {TABS.map((tab) => {
                     const Icon = tab.icon
                     const isActive = activeTab === tab.id
