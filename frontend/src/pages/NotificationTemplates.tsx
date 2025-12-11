@@ -26,7 +26,7 @@ const DEFAULT_TEMPLATES = {
 }
 
 interface NotificationTemplatesProps {
-  onBack: () => void
+  onBack?: () => void
 }
 
 export function NotificationTemplates({ onBack }: NotificationTemplatesProps) {
@@ -103,12 +103,14 @@ export function NotificationTemplates({ onBack }: NotificationTemplatesProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <button
-            onClick={onBack}
-            className="text-primary hover:underline mb-2"
-          >
-            ← 返回通知配置
-          </button>
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="text-primary hover:underline mb-2"
+            >
+              ← 返回通知配置
+            </button>
+          )}
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <FileCode className="w-6 h-6" />
             通知模板管理
