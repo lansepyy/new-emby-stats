@@ -43,7 +43,7 @@ export function Layout({ children, hideChrome = false }: LayoutProps) {
     <div className={cn('min-h-screen', hideChrome ? 'pb-6' : 'pb-24')}>
       {/* Header */}
       {!hideChrome && (
-        <header className="sticky top-0 z-50 glass-subtle safe-area-top">
+        <header className="sticky top-0 z-50 bg-surface border-b border-border safe-area-top">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between gap-2 sm:gap-4">
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
