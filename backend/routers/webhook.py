@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Request, HTTPException
 from typing import Dict, Any
 import logging
+import sys
 
 from services.webhook import WebhookService
 from services.tmdb import TMDBService
@@ -9,6 +10,12 @@ from services.notification import NotificationService, NotificationTemplateServi
 from config import settings
 from config_storage import config_storage
 
+# 配置logger
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/webhook", tags=["webhook"])
