@@ -9,10 +9,23 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
 from routers import stats_router, media_router, auth_router, webhook_router, config_router
+from routers.report import router as report_router
 from routers.auth import get_current_session
+from services.scheduler import report_scheduler
 
 # 创建应用实例
 app = FastAPI(title="Emby Stats")
+
+# 启动定时任务调度器
+@app.on_event("startup")
+async def startup_event():
+    """应用启动时执行"""
+    report_scheduler.start()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """应用关闭时执行"""
+    report_scheduler.stop()
 
 # CORS 中间件配置
 app.add_middleware(
@@ -74,6 +87,7 @@ app.include_router(stats_router)
 app.include_router(media_router)
 app.include_router(webhook_router)
 app.include_router(config_router)
+app.include_router(report_router)
 
 # 静态文件服务
 frontend_path = "/app/frontend"

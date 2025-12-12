@@ -30,6 +30,22 @@ DEFAULT_CONFIG = {
         "api_key": "",
         "image_base_url": "https://image.tmdb.org/t/p/original"
     },
+    "report": {
+        "enabled": False,
+        "daily_enabled": False,
+        "weekly_enabled": False,
+        "monthly_enabled": False,
+        "daily_time": "21:00",
+        "weekly_time": "21:00",
+        "weekly_day": 0,
+        "monthly_time": "21:00",
+        "monthly_day": 1,
+        "channels": {
+            "telegram": True,
+            "wecom": False,
+            "discord": False
+        }
+    },
     "templates": {
         "default": {
             "title": "{% if action == '新入库' and media_type == '电影' %}🎬 {% elif action == '新入库' and media_type == '剧集' %}📺 {% elif action == '新入库' and media_type == '有声书' %}📚 {% elif action == '新入库' %}🆕 {% elif action == '测试' %}🧪 {% elif action == '开始播放' %}▶️ {% elif action == '停止播放' %}⏹️ {% elif action == '登录成功' %}✅ {% elif action == '登录失败' %}❌ {% elif action == '标记了' %}🏷️ {% endif %}{% if user_name %}【{{ user_name }}】{% endif %}{{ action }}{% if media_type %} {{ media_type }} {% endif %}{{ item_name }}",
@@ -111,6 +127,11 @@ class ConfigStorage:
         """获取TMDB配置"""
         config = self.load_config()
         return config.get("tmdb", DEFAULT_CONFIG["tmdb"])
+    
+    def get_report_config(self) -> Dict[str, Any]:
+        """获取报告推送配置"""
+        config = self.load_config()
+        return config.get("report", DEFAULT_CONFIG["report"])
     
     def get_templates(self) -> Dict[str, Any]:
         """获取通知模板"""

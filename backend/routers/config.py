@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 from config_storage import config_storage
+from services.scheduler import report_scheduler
 import os
 import uuid
 from datetime import datetime
@@ -35,11 +36,31 @@ class TMDBConfig(BaseModel):
     image_base_url: str = "https://image.tmdb.org/t/p/original"
 
 
+class ReportChannels(BaseModel):
+    telegram: bool = True
+    wecom: bool = False
+    discord: bool = False
+
+
+class ReportConfig(BaseModel):
+    enabled: bool = False
+    daily_enabled: bool = False
+    weekly_enabled: bool = False
+    monthly_enabled: bool = False
+    daily_time: str = "21:00"
+    weekly_time: str = "21:00"
+    weekly_day: int = 0
+    monthly_time: str = "21:00"
+    monthly_day: int = 1
+    channels: ReportChannels = ReportChannels()
+
+
 class NotificationConfig(BaseModel):
     telegram: TelegramConfig = TelegramConfig()
     wecom: WecomConfig = WecomConfig()
     discord: DiscordConfig = DiscordConfig()
     tmdb: TMDBConfig = TMDBConfig()
+    report: ReportConfig = ReportConfig()
 
 
 class NotificationTemplates(BaseModel):
@@ -54,12 +75,14 @@ async def get_notification_config() -> NotificationConfig:
         wecom_config = config_storage.get_wecom_config()
         discord_config = config_storage.get_discord_config()
         tmdb_config = config_storage.get_tmdb_config()
+        report_config = config_storage.get_report_config()
         
         return NotificationConfig(
             telegram=TelegramConfig(**tg_config),
             wecom=WecomConfig(**wecom_config),
             discord=DiscordConfig(**discord_config),
-            tmdb=TMDBConfig(**tmdb_config)
+            tmdb=TMDBConfig(**tmdb_config),
+            report=ReportConfig(**report_config)
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -74,6 +97,10 @@ async def save_notification_config(config: NotificationConfig):
         config_storage.update_section("wecom", config.wecom.dict())
         config_storage.update_section("discord", config.discord.dict())
         config_storage.update_section("tmdb", config.tmdb.dict())
+        config_storage.update_section("report", config.report.dict())
+        
+        # 重新加载定时任务
+        report_scheduler.reload_tasks()
         
         return {"status": "success", "message": "配置已保存并立即生效"}
     except Exception as e:

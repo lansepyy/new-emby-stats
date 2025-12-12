@@ -3,11 +3,13 @@ import { Card } from '@/components/ui'
 import { Settings, Bell, MessageSquare, Film, Save, TestTube } from 'lucide-react'
 
 export function Notifications() {
-  const [activeSection, setActiveSection] = useState<'telegram' | 'wecom' | 'discord' | 'tmdb'>('telegram')
+  const [activeSection, setActiveSection] = useState<'telegram' | 'wecom' | 'discord' | 'tmdb' | 'report'>('telegram')
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isTesting, setIsTesting] = useState(false)
   const [testMessage, setTestMessage] = useState('')
+  const [isSendingReport, setIsSendingReport] = useState(false)
+  const [reportMessage, setReportMessage] = useState('')
 
   // Telegram配置
   const [telegramConfig, setTelegramConfig] = useState({
@@ -36,6 +38,24 @@ export function Notifications() {
   const [tmdbConfig, setTmdbConfig] = useState({
     apiKey: '',
     imageBaseUrl: 'https://image.tmdb.org/t/p/original',
+  })
+
+  // 报告推送配置
+  const [reportConfig, setReportConfig] = useState({
+    enabled: false,
+    dailyEnabled: false,
+    weeklyEnabled: false,
+    monthlyEnabled: false,
+    dailyTime: '21:00',
+    weeklyTime: '21:00',
+    weeklyDay: '0', // 0=周日
+    monthlyTime: '21:00',
+    monthlyDay: '1', // 1-28
+    channels: {
+      telegram: true,
+      wecom: false,
+      discord: false,
+    }
   })
 
   // 加载配置
@@ -74,6 +94,23 @@ export function Notifications() {
         apiKey: data.tmdb.api_key || '',
         imageBaseUrl: data.tmdb.image_base_url || 'https://image.tmdb.org/t/p/original',
       })
+      
+      setReportConfig({
+        enabled: data.report?.enabled || false,
+        dailyEnabled: data.report?.daily_enabled || false,
+        weeklyEnabled: data.report?.weekly_enabled || false,
+        monthlyEnabled: data.report?.monthly_enabled || false,
+        dailyTime: data.report?.daily_time || '21:00',
+        weeklyTime: data.report?.weekly_time || '21:00',
+        weeklyDay: String(data.report?.weekly_day || '0'),
+        monthlyTime: data.report?.monthly_time || '21:00',
+        monthlyDay: String(data.report?.monthly_day || '1'),
+        channels: {
+          telegram: data.report?.channels?.telegram !== false,
+          wecom: data.report?.channels?.wecom || false,
+          discord: data.report?.channels?.discord || false,
+        }
+      })
     } catch (error) {
       console.error('加载配置失败:', error)
     } finally {
@@ -105,8 +142,18 @@ export function Notifications() {
         tmdb: {
           api_key: tmdbConfig.apiKey,
           image_base_url: tmdbConfig.imageBaseUrl,
-        }
-      }
+        }        report: {
+          enabled: reportConfig.enabled,
+          daily_enabled: reportConfig.dailyEnabled,
+          weekly_enabled: reportConfig.weeklyEnabled,
+          monthly_enabled: reportConfig.monthlyEnabled,
+          daily_time: reportConfig.dailyTime,
+          weekly_time: reportConfig.weeklyTime,
+          weekly_day: parseInt(reportConfig.weeklyDay),
+          monthly_time: reportConfig.monthlyTime,
+          monthly_day: parseInt(reportConfig.monthlyDay),
+          channels: reportConfig.channels,
+        }      }
       
       const response = await fetch('/api/config/notification', {
         method: 'POST',
@@ -136,11 +183,31 @@ export function Notifications() {
     }
   }
 
+  const handleSendReport = async (type: 'daily' | 'weekly' | 'monthly') => {
+    setIsSendingReport(true)
+    setReportMessage('')
+    try {
+      const response = await fetch(`/api/report/send?type=${type}`, {
+        method: 'POST'
+      })
+      if (response.ok) {
+        setReportMessage(`✅ ${type === 'daily' ? '每日' : type === 'weekly' ? '每周' : '每月'}报告已发送！`)
+      } else {
+        setReportMessage('❌ 发送失败，请检查配置')
+      }
+    } catch (error) {
+      setReportMessage('❌ 发送失败：' + (error as Error).message)
+    } finally {
+      setIsSendingReport(false)
+    }
+  }
+
   const sections = [
     { id: 'telegram', label: 'Telegram', icon: MessageSquare },
     { id: 'wecom', label: '企业微信', icon: Bell },
     { id: 'discord', label: 'Discord', icon: MessageSquare },
     { id: 'tmdb', label: 'TMDB', icon: Film },
+    { id: 'report', label: '观影报告', icon: Settings },
   ] as const
 
   // 加载中
@@ -401,6 +468,240 @@ export function Notifications() {
                   TMDB (The Movie Database) 用于获取电影和剧集的高质量海报、背景图和详细信息。
                   配置后，通知中将显示更精美的媒体图片。
                 </p>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'report' && (
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold mb-4">观影报告推送</h3>
+              
+              {/* 总开关 */}
+              <div className="flex items-center justify-between p-4 bg-surface-hover rounded-lg">
+                <div>
+                  <h4 className="font-medium">启用报告推送</h4>
+                  <p className="text-sm text-text-secondary">开启后将按设定的时间自动推送报告</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={reportConfig.enabled}
+                    onChange={e => setReportConfig({ ...reportConfig, enabled: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                </label>
+              </div>
+
+              {/* 推送渠道选择 */}
+              <div className="p-4 bg-surface-hover rounded-lg">
+                <h4 className="font-medium mb-3">推送渠道</h4>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={reportConfig.channels.telegram}
+                      onChange={e => setReportConfig({
+                        ...reportConfig,
+                        channels: { ...reportConfig.channels, telegram: e.target.checked }
+                      })}
+                      className="w-4 h-4 text-primary bg-surface border-border rounded focus:ring-primary"
+                    />
+                    <span>Telegram</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={reportConfig.channels.wecom}
+                      onChange={e => setReportConfig({
+                        ...reportConfig,
+                        channels: { ...reportConfig.channels, wecom: e.target.checked }
+                      })}
+                      className="w-4 h-4 text-primary bg-surface border-border rounded focus:ring-primary"
+                    />
+                    <span>企业微信</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={reportConfig.channels.discord}
+                      onChange={e => setReportConfig({
+                        ...reportConfig,
+                        channels: { ...reportConfig.channels, discord: e.target.checked }
+                      })}
+                      className="w-4 h-4 text-primary bg-surface border-border rounded focus:ring-primary"
+                    />
+                    <span>Discord</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* 每日报告 */}
+              <div className="border border-border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="font-medium">每日报告</h4>
+                    <p className="text-sm text-text-secondary">每天推送昨日观影统计</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={reportConfig.dailyEnabled}
+                      onChange={e => setReportConfig({ ...reportConfig, dailyEnabled: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                  </label>
+                </div>
+                {reportConfig.dailyEnabled && (
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2">
+                      <span className="text-sm">推送时间：</span>
+                      <input
+                        type="time"
+                        value={reportConfig.dailyTime}
+                        onChange={e => setReportConfig({ ...reportConfig, dailyTime: e.target.value })}
+                        className="px-3 py-1.5 bg-surface border border-border rounded-lg"
+                      />
+                    </label>
+                    <button
+                      onClick={() => handleSendReport('daily')}
+                      disabled={isSendingReport}
+                      className="px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 text-sm"
+                    >
+                      立即发送
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* 每周报告 */}
+              <div className="border border-border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="font-medium">每周报告</h4>
+                    <p className="text-sm text-text-secondary">每周推送本周观影统计</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={reportConfig.weeklyEnabled}
+                      onChange={e => setReportConfig({ ...reportConfig, weeklyEnabled: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                  </label>
+                </div>
+                {reportConfig.weeklyEnabled && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2">
+                        <span className="text-sm">推送日期：</span>
+                        <select
+                          value={reportConfig.weeklyDay}
+                          onChange={e => setReportConfig({ ...reportConfig, weeklyDay: e.target.value })}
+                          className="px-3 py-1.5 bg-surface border border-border rounded-lg"
+                        >
+                          <option value="0">周日</option>
+                          <option value="1">周一</option>
+                          <option value="2">周二</option>
+                          <option value="3">周三</option>
+                          <option value="4">周四</option>
+                          <option value="5">周五</option>
+                          <option value="6">周六</option>
+                        </select>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <span className="text-sm">时间：</span>
+                        <input
+                          type="time"
+                          value={reportConfig.weeklyTime}
+                          onChange={e => setReportConfig({ ...reportConfig, weeklyTime: e.target.value })}
+                          className="px-3 py-1.5 bg-surface border border-border rounded-lg"
+                        />
+                      </label>
+                      <button
+                        onClick={() => handleSendReport('weekly')}
+                        disabled={isSendingReport}
+                        className="px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 text-sm"
+                      >
+                        立即发送
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 每月报告 */}
+              <div className="border border-border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="font-medium">每月报告</h4>
+                    <p className="text-sm text-text-secondary">每月推送本月观影统计</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={reportConfig.monthlyEnabled}
+                      onChange={e => setReportConfig({ ...reportConfig, monthlyEnabled: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                  </label>
+                </div>
+                {reportConfig.monthlyEnabled && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2">
+                        <span className="text-sm">推送日期：每月</span>
+                        <select
+                          value={reportConfig.monthlyDay}
+                          onChange={e => setReportConfig({ ...reportConfig, monthlyDay: e.target.value })}
+                          className="px-3 py-1.5 bg-surface border border-border rounded-lg"
+                        >
+                          {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
+                            <option key={day} value={day}>{day}日</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <span className="text-sm">时间：</span>
+                        <input
+                          type="time"
+                          value={reportConfig.monthlyTime}
+                          onChange={e => setReportConfig({ ...reportConfig, monthlyTime: e.target.value })}
+                          className="px-3 py-1.5 bg-surface border border-border rounded-lg"
+                        />
+                      </label>
+                      <button
+                        onClick={() => handleSendReport('monthly')}
+                        disabled={isSendingReport}
+                        className="px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 text-sm"
+                      >
+                        立即发送
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 报告发送提示 */}
+              {reportMessage && (
+                <div className={`p-4 rounded-lg ${reportMessage.startsWith('✅') ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
+                  {reportMessage}
+                </div>
+              )}
+
+              {/* 说明 */}
+              <div className="mt-6 p-4 bg-surface-hover rounded-lg">
+                <h4 className="font-medium mb-2">关于观影报告</h4>
+                <ul className="text-sm text-text-secondary space-y-1 list-disc list-inside">
+                  <li>报告会发送到已配置的推送渠道（Telegram/企业微信/Discord）</li>
+                  <li>每日报告统计昨天的观影数据</li>
+                  <li>每周报告统计过去7天的数据</li>
+                  <li>每月报告统计过去30天的数据</li>
+                  <li>点击"立即发送"可以手动测试报告推送</li>
+                </ul>
               </div>
             </div>
           )}
