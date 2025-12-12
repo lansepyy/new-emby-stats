@@ -60,7 +60,7 @@ async def send_report(type: str = Query(..., regex="^(daily|weekly|monthly)$")):
         
         if channels.get("telegram") and tg_config.get("bot_token"):
             try:
-                await notification_service.send_telegram_message(report_text)
+                notification_service.send_telegram("观影报告", report_text)
                 sent_count += 1
                 logger.info("报告已通过 Telegram 发送")
             except Exception as e:
@@ -68,7 +68,7 @@ async def send_report(type: str = Query(..., regex="^(daily|weekly|monthly)$")):
         
         if channels.get("wecom") and wecom_config.get("corp_id"):
             try:
-                await notification_service.send_wecom_message(report_text)
+                notification_service.send_wecom("观影报告", report_text)
                 sent_count += 1
                 logger.info("报告已通过企业微信发送")
             except Exception as e:
@@ -76,7 +76,7 @@ async def send_report(type: str = Query(..., regex="^(daily|weekly|monthly)$")):
         
         if channels.get("discord") and discord_config.get("webhook_url"):
             try:
-                await notification_service.send_discord_message(report_text)
+                notification_service.send_discord("观影报告", report_text)
                 sent_count += 1
                 logger.info("报告已通过 Discord 发送")
             except Exception as e:
