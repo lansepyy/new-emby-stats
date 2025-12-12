@@ -498,7 +498,7 @@ export function Notifications() {
               <div className="p-4 bg-surface-hover rounded-lg">
                 <h4 className="font-medium mb-3">推送渠道</h4>
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2">
+                  <label className="flex items-center gap-3 cursor-pointer p-2 -m-2 rounded-lg hover:bg-content2 transition-colors">
                     <input
                       type="checkbox"
                       checked={reportConfig.channels.telegram}
@@ -506,11 +506,11 @@ export function Notifications() {
                         ...reportConfig,
                         channels: { ...reportConfig.channels, telegram: e.target.checked }
                       })}
-                      className="w-4 h-4 text-primary bg-surface border-border rounded focus:ring-primary"
+                      className="w-5 h-5 text-primary bg-surface border-border rounded focus:ring-primary cursor-pointer"
                     />
-                    <span>Telegram</span>
+                    <span className="flex-1">Telegram</span>
                   </label>
-                  <label className="flex items-center gap-2">
+                  <label className="flex items-center gap-3 cursor-pointer p-2 -m-2 rounded-lg hover:bg-content2 transition-colors">
                     <input
                       type="checkbox"
                       checked={reportConfig.channels.wecom}
@@ -518,11 +518,11 @@ export function Notifications() {
                         ...reportConfig,
                         channels: { ...reportConfig.channels, wecom: e.target.checked }
                       })}
-                      className="w-4 h-4 text-primary bg-surface border-border rounded focus:ring-primary"
+                      className="w-5 h-5 text-primary bg-surface border-border rounded focus:ring-primary cursor-pointer"
                     />
-                    <span>企业微信</span>
+                    <span className="flex-1">企业微信</span>
                   </label>
-                  <label className="flex items-center gap-2">
+                  <label className="flex items-center gap-3 cursor-pointer p-2 -m-2 rounded-lg hover:bg-content2 transition-colors">
                     <input
                       type="checkbox"
                       checked={reportConfig.channels.discord}
@@ -530,9 +530,9 @@ export function Notifications() {
                         ...reportConfig,
                         channels: { ...reportConfig.channels, discord: e.target.checked }
                       })}
-                      className="w-4 h-4 text-primary bg-surface border-border rounded focus:ring-primary"
+                      className="w-5 h-5 text-primary bg-surface border-border rounded focus:ring-primary cursor-pointer"
                     />
-                    <span>Discord</span>
+                    <span className="flex-1">Discord</span>
                   </label>
                 </div>
               </div>
