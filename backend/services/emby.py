@@ -14,6 +14,8 @@ class EmbyService:
         self._api_key_cache: str | None = None
         self._user_id_cache: str | None = None
         self._item_info_cache: dict = {}
+        self._emby_url = settings.EMBY_URL
+        self._emby_url = settings.EMBY_URL
 
     async def get_api_key(self) -> str:
         """获取 Emby API Key，优先使用环境变量，否则从数据库获取"""

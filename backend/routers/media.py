@@ -2,14 +2,18 @@
 媒体相关路由模块
 处理内容排行和海报等 API 端点
 """
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import StreamingResponse
 from datetime import datetime, timedelta
 from collections import defaultdict
 from typing import Optional, List
+import httpx
+import logging
 
 from database import get_playback_db, get_count_expr, local_date
 from services.emby import emby_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["media"])
 
@@ -333,133 +337,154 @@ async def get_favorites(
     - by_user: 按用户分组的收藏列表，每个用户包含其收藏的项目列表
     - ranking: 收藏次数最多的项目排行榜
     - stats: 统计信息（总收藏数、用户数、电影/剧集数）
-    """
-    type_list = [item_type] if item_type else None
     
-    where_clause, params = build_filter_conditions(
-        days=days if not (start_date or end_date) else None,
-        start_date=start_date,
-        end_date=end_date,
-        item_types=type_list,
-    )
-
-    async with get_playback_db() as db:
-        # 1. 获取按用户分组的收藏（只获取IsFavorite=1的记录）
-        user_favorites_query = f"""
-            SELECT
-                UserId,
-                ItemId,
-                ItemName,
-                ItemType,
-                MAX(DateCreated) as last_favorited
-            FROM PlaybackActivity
-            WHERE {where_clause} AND IsFavorite = 1
-            GROUP BY UserId, ItemId
-            ORDER BY UserId, last_favorited DESC
-        """
+    注意：此接口从 Emby API 获取收藏数据，不依赖数据库 IsFavorite 字段
+    """
+    try:
+        # 从 Emby API 获取所有用户
+        api_key = await emby_service.get_api_key()
+        if not api_key:
+            raise HTTPException(status_code=500, detail="无法获取 Emby API Key")
         
-        user_favorites_map = defaultdict(list)
-        all_item_ids = set()
-        stats_movie_ids = set()
-        stats_episode_ids = set()
-        
-        async with db.execute(user_favorites_query, params) as cursor:
-            async for row in cursor:
-                user_id = row[0]
-                item_id = row[1]
-                item_name = row[2]
-                item_type = row[3]
-                last_favorited = row[4]
-                
-                user_favorites_map[user_id].append({
-                    "item_id": item_id,
-                    "item_name": item_name,
-                    "item_type": item_type,
-                    "last_favorited": last_favorited
-                })
-                all_item_ids.add(item_id)
-                
-                # 统计不同类型的收藏数
-                if item_type == "Movie":
-                    stats_movie_ids.add(item_id)
-                elif item_type == "Episode":
-                    stats_episode_ids.add(item_id)
-        
-        # 2. 获取收藏排行榜（按收藏人数统计）
-        ranking_query = f"""
-            SELECT
-                ItemId,
-                ItemName,
-                ItemType,
-                COUNT(DISTINCT UserId) as favorite_count
-            FROM PlaybackActivity
-            WHERE {where_clause} AND IsFavorite = 1
-            GROUP BY ItemId
-            ORDER BY favorite_count DESC
-            LIMIT 50
-        """
-        
-        ranking_list = []
-        async with db.execute(ranking_query, params) as cursor:
-            async for row in cursor:
-                ranking_list.append({
-                    "item_id": row[0],
-                    "item_name": row[1],
-                    "item_type": row[2],
-                    "favorite_count": row[3]
-                })
-        
-        # 3. 获取总用户数
-        total_users_query = "SELECT COUNT(DISTINCT UserId) FROM PlaybackActivity WHERE UserId IS NOT NULL"
-        async with db.execute(total_users_query) as cursor:
-            row = await cursor.fetchone()
-            total_users = row[0] if row else 0
-        
-        # 4. 获取用户信息并计算每个用户的电影/剧集收藏数
-        user_list = []
-        for user_id, favorites in user_favorites_map.items():
-            user_info = await emby_service.get_user_info(user_id)
+        async with httpx.AsyncClient() as client:
+            # 获取所有用户列表
+            users_resp = await client.get(
+                f"{emby_service._emby_url}/emby/Users",
+                params={"api_key": api_key},
+                timeout=10
+            )
+            if users_resp.status_code != 200:
+                raise HTTPException(status_code=500, detail="无法获取用户列表")
             
-            movie_count = sum(1 for f in favorites if f["item_type"] == "Movie")
-            episode_count = sum(1 for f in favorites if f["item_type"] == "Episode")
+            users = users_resp.json()
             
-            user_list.append({
-                "user_id": user_id,
-                "username": user_info.get("Name", user_id) if user_info else user_id,
-                "favorites": favorites,
-                "favorite_count": len(favorites),
-                "movie_count": movie_count,
-                "episode_count": episode_count
-            })
-        
-        # 按收藏数量排序
-        user_list.sort(key=lambda x: x["favorite_count"], reverse=True)
-        
-        # 5. 为每个项目获取海报信息
-        for item in ranking_list:
-            poster_info = await emby_service.get_item_images(item["item_id"])
-            item["poster_url"] = poster_info.get("poster_url")
-            item["backdrop_url"] = poster_info.get("backdrop_url")
-            item["overview"] = poster_info.get("overview")
-        
-        for user in user_list:
-            for fav in user["favorites"]:
-                poster_info = await emby_service.get_item_images(fav["item_id"])
-                fav["poster_url"] = poster_info.get("poster_url")
-                fav["backdrop_url"] = poster_info.get("backdrop_url")
-                fav["overview"] = poster_info.get("overview")
-        
-        # 6. 计算统计信息
-        stats = {
-            "total_favorites": len(all_item_ids),
-            "total_users": total_users,
-            "active_users": len(user_favorites_map),
-            "movie_count": len(stats_movie_ids),
-            "episode_count": len(stats_episode_ids)
-        }
-        
-        return {
-            "by_user": user_list,
-            "ranking": ranking_list,
-            "stats": stats
-        }
+            user_favorites_map = {}
+            all_favorite_items = {}
+            stats_movie_ids = set()
+            stats_episode_ids = set()
+            
+            # 遍历每个用户，获取其收藏
+            for user in users:
+                user_id = user.get("Id")
+                username = user.get("Name", "")
+                
+                # 获取用户的收藏项目
+                favorites_resp = await client.get(
+                    f"{emby_service._emby_url}/emby/Users/{user_id}/Items",
+                    params={
+                        "api_key": api_key,
+                        "Filters": "IsFavorite",
+                        "Recursive": "true",
+                        "Fields": "Overview",
+                        "IncludeItemTypes": item_type if item_type else "Movie,Series,Episode"
+                    },
+                    timeout=15
+                )
+                
+                if favorites_resp.status_code == 200:
+                    fav_data = favorites_resp.json()
+                    items = fav_data.get("Items", [])
+                    
+                    if items:
+                        user_fav_list = []
+                        for item in items:
+                            item_id = item.get("Id")
+                            item_name = item.get("Name", "")
+                            item_type_val = item.get("Type", "")
+                            
+                            # 应用类型筛选
+                            if item_type and item_type_val != item_type:
+                                continue
+                            
+                            user_fav_list.append({
+                                "item_id": item_id,
+                                "item_name": item_name,
+                                "item_type": item_type_val,
+                                "last_favorited": None
+                            })
+                            
+                            # 统计全局收藏项
+                            if item_id not in all_favorite_items:
+                                all_favorite_items[item_id] = {
+                                    "item_id": item_id,
+                                    "item_name": item_name,
+                                    "item_type": item_type_val,
+                                    "favorite_count": 0
+                                }
+                            all_favorite_items[item_id]["favorite_count"] += 1
+                            
+                            # 统计电影/剧集数
+                            if item_type_val == "Movie":
+                                stats_movie_ids.add(item_id)
+                            elif item_type_val == "Episode":
+                                stats_episode_ids.add(item_id)
+                        
+                        if user_fav_list:
+                            user_favorites_map[user_id] = {
+                                "username": username,
+                                "favorites": user_fav_list
+                            }
+            
+            # 获取总用户数
+            async with get_playback_db() as db:
+                total_users_query = "SELECT COUNT(DISTINCT UserId) FROM PlaybackActivity WHERE UserId IS NOT NULL"
+                async with db.execute(total_users_query) as cursor:
+                    row = await cursor.fetchone()
+                    total_users = row[0] if row else len(users)
+            
+            # 构建用户列表
+            user_list = []
+            for user_id, user_data in user_favorites_map.items():
+                favorites = user_data["favorites"]
+                movie_count = sum(1 for f in favorites if f["item_type"] == "Movie")
+                episode_count = sum(1 for f in favorites if f["item_type"] == "Episode")
+                
+                user_list.append({
+                    "user_id": user_id,
+                    "username": user_data["username"],
+                    "favorites": favorites,
+                    "favorite_count": len(favorites),
+                    "movie_count": movie_count,
+                    "episode_count": episode_count
+                })
+            
+            # 按收藏数量排序
+            user_list.sort(key=lambda x: x["favorite_count"], reverse=True)
+            
+            # 构建排行榜
+            ranking_list = sorted(all_favorite_items.values(), key=lambda x: x["favorite_count"], reverse=True)[:50]
+            
+            # 为每个项目获取海报信息
+            for item in ranking_list:
+                poster_info = await emby_service.get_item_images(item["item_id"])
+                item["poster_url"] = poster_info.get("poster_url")
+                item["backdrop_url"] = poster_info.get("backdrop_url")
+                item["overview"] = poster_info.get("overview")
+            
+            for user in user_list:
+                for fav in user["favorites"]:
+                    poster_info = await emby_service.get_item_images(fav["item_id"])
+                    fav["poster_url"] = poster_info.get("poster_url")
+                    fav["backdrop_url"] = poster_info.get("backdrop_url")
+                    fav["overview"] = poster_info.get("overview")
+            
+            # 计算统计信息
+            stats = {
+                "total_favorites": len(all_favorite_items),
+                "total_users": total_users,
+                "active_users": len(user_favorites_map),
+                "movie_count": len(stats_movie_ids),
+                "episode_count": len(stats_episode_ids)
+            }
+            
+            return {
+                "by_user": user_list,
+                "ranking": ranking_list,
+                "stats": stats
+            }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"获取收藏数据失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"获取收藏数据失败: {str(e)}")
