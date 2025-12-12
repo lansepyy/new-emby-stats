@@ -221,6 +221,17 @@ class WebhookService:
             if not item:
                 return None
             
+            # 检测 item.rate 事件是收藏操作还是评分操作
+            if event == "item.rate":
+                user_data = item.get("UserData", {})
+                is_favorite = user_data.get("IsFavorite")
+                
+                # 如果 IsFavorite 字段存在，说明是收藏操作
+                if is_favorite is not None:
+                    action = "收藏" if is_favorite else "取消收藏"
+                    context["action"] = action
+                    logger.info(f"检测到收藏操作: {action}, IsFavorite={is_favorite}")
+            
             media_type = "电影" if item.get("Type") == "Movie" else "剧集"
             media_name = item.get("Name", "未知媒体")
             
