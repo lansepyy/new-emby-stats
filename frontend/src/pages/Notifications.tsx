@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui'
-import { Settings, Bell, MessageSquare, Film, Save, TestTube, FileCode } from 'lucide-react'
+import { Settings, Bell, MessageSquare, Film, Save, TestTube } from 'lucide-react'
 
 export function Notifications() {
   const [activeSection, setActiveSection] = useState<'telegram' | 'wecom' | 'discord' | 'tmdb'>('telegram')
