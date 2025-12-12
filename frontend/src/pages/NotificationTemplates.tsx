@@ -58,27 +58,12 @@ export function NotificationTemplates({ onBack }: NotificationTemplatesProps) {
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      // 格式化模板：移除每行前面的空格
-      const formattedTemplates = Object.fromEntries(
-        Object.entries(templates).map(([key, template]) => [
-          key,
-          {
-            title: template.title.split('\n').map(line => line.trim()).join('\n'),
-            text: template.text.split('\n').map(line => line.trim()).join('\n')
-          }
-        ])
-      )
-      
       const response = await fetch('/api/config/notification/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templates: formattedTemplates })
+        body: JSON.stringify({ templates })
       })
       const result = await response.json()
-      
-      // 更新本地状态为格式化后的模板
-      setTemplates(formattedTemplates as typeof DEFAULT_TEMPLATES)
-      
       alert(result.message || '模板已保存')
     } catch (error) {
       alert('保存失败：' + (error as Error).message)
