@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui'
 import { Settings, Bell, MessageSquare, Film, Save, TestTube } from 'lucide-react'
 import html2canvas from 'html2canvas'
@@ -12,7 +12,6 @@ export function Notifications() {
   const [testMessage, setTestMessage] = useState('')
   const [isSendingReport, setIsSendingReport] = useState(false)
   const [reportMessage, setReportMessage] = useState('')
-  const reportRef = useRef<HTMLDivElement>(null)
 
   // Telegram配置
   const [telegramConfig, setTelegramConfig] = useState({
