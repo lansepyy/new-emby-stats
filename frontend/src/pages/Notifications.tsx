@@ -142,7 +142,8 @@ export function Notifications() {
         tmdb: {
           api_key: tmdbConfig.apiKey,
           image_base_url: tmdbConfig.imageBaseUrl,
-        }        report: {
+        },
+        report: {
           enabled: reportConfig.enabled,
           daily_enabled: reportConfig.dailyEnabled,
           weekly_enabled: reportConfig.weeklyEnabled,
