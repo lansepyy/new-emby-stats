@@ -189,7 +189,7 @@ export function NotificationTemplates({ onBack }: NotificationTemplatesProps) {
                   onClick={handleFormat}
                   className="text-xs text-primary hover:underline"
                 >
-                  格式化（移除空格）
+                  左对齐
                 </button>
               </div>
               <textarea
