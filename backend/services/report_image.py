@@ -60,12 +60,12 @@ class ReportImageService:
     def _draw_header(self, draw: ImageDraw, report: Dict[str, Any], y: int) -> int:
         """绘制标题区域"""
         # 标题
-        title_font = self._get_font(56, bold=True)
+        title_font = self._get_font(72, bold=True)
         draw.text((50, y + 50), report['title'], fill=self.text_primary, font=title_font)
         
         # 日期
-        date_font = self._get_font(28)
-        draw.text((50, y + 130), report['period'], fill=self.text_secondary, font=date_font)
+        date_font = self._get_font(36)
+        draw.text((50, y + 150), report['period'], fill=self.text_secondary, font=date_font)
         
         return y + 260
     
@@ -126,7 +126,7 @@ class ReportImageService:
         episode_hours = summary['total_hours'] - movie_hours
         
         detail_text = f"电影 {movie_count}部 · {int(movie_hours)}h{int((movie_hours % 1) * 60)}m    剧集 {episode_count}集 · {int(episode_hours)}h{int((episode_hours % 1) * 60)}m"
-        detail_font = self._get_font(18)
+        detail_font = self._get_font(22)
         
         # 居中绘制
         bbox = draw.textbbox((0, 0), detail_text, font=detail_font)
@@ -142,8 +142,8 @@ class ReportImageService:
     
     def _draw_stat_item(self, draw: ImageDraw, x: int, y: int, value: str, label: str, color: tuple):
         """绘制单个统计项（居中）"""
-        value_font = self._get_font(40, bold=True)
-        label_font = self._get_font(16)
+        value_font = self._get_font(52, bold=True)
+        label_font = self._get_font(20)
         
         # 计算文字宽度以居中
         value_bbox = draw.textbbox((0, 0), value, font=value_font)
@@ -156,12 +156,12 @@ class ReportImageService:
         draw.text((x - value_width // 2, y), value, fill=color, font=value_font)
         
         # 绘制标签（居中）
-        draw.text((x - label_width // 2, y + 60), label, fill=self.text_secondary, font=label_font)
+        draw.text((x - label_width // 2, y + 70), label, fill=self.text_secondary, font=label_font)
     
     def _draw_top_content(self, draw: ImageDraw, img: Image, report: Dict[str, Any], y: int, item_images: List[Optional[bytes]] = None) -> int:
         """绘制热门内容列表"""
         # 标题
-        title_font = self._get_font(32, bold=True)
+        title_font = self._get_font(42, bold=True)
         draw.text((50, y), "热门内容", fill=self.text_primary, font=title_font)
         
         y += 70
@@ -187,7 +187,7 @@ class ReportImageService:
         x_offset = card_padding + 25
         
         # 排名
-        rank_font = self._get_font(42, bold=True)
+        rank_font = self._get_font(52, bold=True)
         draw.text((x_offset, y + 45), f"#{index + 1}", fill=self.accent_yellow, font=rank_font)
         
         x_offset += 75
@@ -206,9 +206,9 @@ class ReportImageService:
         x_offset += 110
         
         # 内容信息
-        name_font = self._get_font(24, bold=True)
-        type_font = self._get_font(16)
-        stat_font = self._get_font(16)
+        name_font = self._get_font(30, bold=True)
+        type_font = self._get_font(20)
+        stat_font = self._get_font(20)
         
         # 标题（截断）
         name = item['name']
@@ -230,7 +230,7 @@ class ReportImageService:
     
     def _draw_footer(self, draw: ImageDraw, y: int):
         """绘制页脚"""
-        footer_font = self._get_font(18)
+        footer_font = self._get_font(22)
         footer_text = "Emby Stats"
         
         # 居中绘制
