@@ -58,12 +58,27 @@ export function NotificationTemplates({ onBack }: NotificationTemplatesProps) {
   const handleSave = async () => {
     setIsSaving(true)
     try {
+      // 格式化模板：移除每行前面的空格
+      const formattedTemplates = Object.fromEntries(
+        Object.entries(templates).map(([key, template]) => [
+          key,
+          {
+            title: template.title.split('\n').map(line => line.trim()).join('\n'),
+            text: template.text.split('\n').map(line => line.trim()).join('\n')
+          }
+        ])
+      )
+      
       const response = await fetch('/api/config/notification/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templates })
+        body: JSON.stringify({ templates: formattedTemplates })
       })
       const result = await response.json()
+      
+      // 更新本地状态为格式化后的模板
+      setTemplates(formattedTemplates as typeof DEFAULT_TEMPLATES)
+      
       alert(result.message || '模板已保存')
     } catch (error) {
       alert('保存失败：' + (error as Error).message)
@@ -76,6 +91,18 @@ export function NotificationTemplates({ onBack }: NotificationTemplatesProps) {
     if (confirm('确定要重置为默认模板吗？此操作不可恢复。')) {
       setTemplates(DEFAULT_TEMPLATES)
     }
+  }
+
+  // 格式化当前模板：移除每行前面的空格
+  const handleFormat = () => {
+    const formatted = {
+      title: templates[activeTemplate].title.split('\n').map(line => line.trim()).join('\n'),
+      text: templates[activeTemplate].text.split('\n').map(line => line.trim()).join('\n')
+    }
+    setTemplates({
+      ...templates,
+      [activeTemplate]: formatted
+    })
   }
 
   const templateTypes = [
@@ -171,7 +198,15 @@ export function NotificationTemplates({ onBack }: NotificationTemplatesProps) {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">标题模板</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium">标题模板</label>
+                <button
+                  onClick={handleFormat}
+                  className="text-xs text-primary hover:underline"
+                >
+                  格式化（移除空格）
+                </button>
+              </div>
               <textarea
                 value={templates[activeTemplate].title}
                 onChange={e => setTemplates({
@@ -179,7 +214,8 @@ export function NotificationTemplates({ onBack }: NotificationTemplatesProps) {
                   [activeTemplate]: { ...templates[activeTemplate], title: e.target.value }
                 })}
                 rows={3}
-                className="w-full px-4 py-3 bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm whitespace-pre"
+                className="w-full px-2 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+                style={{ whiteSpace: 'pre', overflowWrap: 'normal', overflowX: 'auto' }}
                 placeholder="输入标题模板..."
                 spellCheck={false}
               />
@@ -194,7 +230,8 @@ export function NotificationTemplates({ onBack }: NotificationTemplatesProps) {
                   [activeTemplate]: { ...templates[activeTemplate], text: e.target.value }
                 })}
                 rows={12}
-                className="w-full px-4 py-3 bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm whitespace-pre"
+                className="w-full px-2 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+                style={{ whiteSpace: 'pre', overflowWrap: 'normal', overflowX: 'auto' }}
                 placeholder="输入内容模板..."
                 spellCheck={false}
               />
