@@ -226,7 +226,10 @@ export function Favorites({ filterParams }: FavoritesProps) {
                 <div key={user.user_id}>
                   <Card className="p-4">
                     {/* 用户信息行 */}
-                    <div className="flex items-center justify-between">
+                    <div 
+                      className="flex items-center justify-between cursor-pointer hover:bg-content2/50 rounded-lg -m-4 p-4 transition-colors" 
+                      onClick={() => toggleUserExpand(user.user_id)}
+                    >
                       <div className="flex items-center gap-3">
                         <Avatar name={user.username} index={index} />
                         <div>
@@ -278,17 +281,14 @@ export function Favorites({ filterParams }: FavoritesProps) {
                           <span className="font-semibold">{user.favorite_count}</span>
                         </div>
                         
-                        {/* 展开/收起按钮 */}
-                        <button
-                          onClick={() => toggleUserExpand(user.user_id)}
-                          className="p-1 hover:bg-content2 rounded transition-colors"
-                        >
+                        {/* 展开/收起图标 */}
+                        <div className="p-1">
                           {isExpanded ? (
                             <ChevronUp className="w-5 h-5" />
                           ) : (
                             <ChevronDown className="w-5 h-5" />
                           )}
-                        </button>
+                        </div>
                       </div>
                     </div>
                   </Card>
