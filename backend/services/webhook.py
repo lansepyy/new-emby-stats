@@ -21,6 +21,10 @@ class WebhookService:
             "item.markunplayed": "标记未播放",
             "item.markplayed": "标记已播放",
             "item.rate": "评分",
+            "user.rating.update": "评分",
+            "item.rating.update": "评分",
+            "user.favorite.update": "收藏",
+            "item.favorite.update": "收藏",
             "user.authenticated": "登录成功",
             "user.authenticationfailed": "登录失败",
             "system.updateavailable": "系统更新可用",
@@ -185,8 +189,8 @@ class WebhookService:
                 "item_type": item.get("Type"),
             })
         
-        # 标记事件
-        elif event.startswith("item.mark") or event.startswith("user.rating") or event == "item.rate":
+        # 标记事件（包括播放标记、评分、收藏）
+        elif event.startswith("item.mark") or event.startswith("user.rating") or event.startswith("item.rating") or event.startswith("user.favorite") or event.startswith("item.favorite") or event == "item.rate":
             item = response.get("Item", {})
             if not item:
                 return None

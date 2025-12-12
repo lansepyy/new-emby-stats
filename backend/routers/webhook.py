@@ -82,7 +82,7 @@ async def handle_emby_webhook(request: Request):
             template_name = "library"
         elif event in ("user.authenticated", "user.authenticationfailed"):
             template_name = "login"
-        elif event.startswith("item.mark") or event.startswith("user.rating"):
+        elif event.startswith("item.mark") or event.startswith("user.rating") or event.startswith("item.rating") or event.startswith("user.favorite") or event.startswith("item.favorite"):
             template_name = "mark"
         else:
             template_name = "default"
