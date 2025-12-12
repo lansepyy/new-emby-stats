@@ -25,6 +25,7 @@ class WebhookService:
             "item.rating.update": "评分",
             "user.favorite.update": "收藏",
             "item.favorite.update": "收藏",
+            "user.data.saved": "数据更新",  # Emby可能使用这个事件
             "user.authenticated": "登录成功",
             "user.authenticationfailed": "登录失败",
             "system.updateavailable": "系统更新可用",
