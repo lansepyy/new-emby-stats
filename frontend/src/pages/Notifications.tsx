@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui'
 import { Settings, Bell, MessageSquare, Film, Save, TestTube, FileCode } from 'lucide-react'
-import { NotificationTemplates } from './NotificationTemplates'
 
 export function Notifications() {
-  const [showTemplates, setShowTemplates] = useState(false)
   const [activeSection, setActiveSection] = useState<'telegram' | 'wecom' | 'discord' | 'tmdb'>('telegram')
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -145,11 +143,6 @@ export function Notifications() {
     { id: 'tmdb', label: 'TMDB', icon: Film },
   ] as const
 
-  // 如果显示模板管理页面
-  if (showTemplates) {
-    return <NotificationTemplates onBack={() => setShowTemplates(false)} />
-  }
-
   // 加载中
   if (isLoading) {
     return (
@@ -176,13 +169,6 @@ export function Notifications() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => setShowTemplates(true)}
-            className="px-4 py-2 bg-surface-hover rounded-lg hover:bg-surface transition-colors flex items-center gap-2"
-          >
-            <FileCode className="w-4 h-4" />
-            模板管理
-          </button>
           <button
             onClick={handleTest}
             disabled={isTesting}

@@ -1,13 +1,15 @@
 import { useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Chip } from '@/components/ui'
-import { Play, LayoutDashboard, Flame, Users, Monitor, History, FileText, LogOut, Sun, Moon, Filter, Settings, Bell } from 'lucide-react'
+import { Play, LayoutDashboard, Flame, Users, Monitor, History, FileText, LogOut, Sun, Moon, Filter, Settings, Bell, Server } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useFilter } from '@/contexts/FilterContext'
 import { FilterPanel } from '@/components/FilterPanel'
 import { NameMappingPanel } from '@/components/NameMappingPanel'
+import { ServerManagementPanel } from '@/components/ServerManagementPanel'
+import { useServer } from '@/contexts/ServerContext'
 
 interface LayoutProps {
   children: (props: { activeTab: string; refreshKey: number }) => ReactNode
@@ -20,7 +22,7 @@ const TABS = [
   { id: 'devices', label: '设备', icon: Monitor },
   { id: 'history', label: '历史', icon: History },
   { id: 'notifications', label: '通知', icon: Bell },
-  { id: 'report', label: '报告', icon: FileText },
+  { id: 'report', label: '模板', icon: FileText },
 ]
 
 const TIME_RANGES = [
@@ -34,10 +36,12 @@ export function Layout({ children, hideChrome = false }: LayoutProps) {
   const { username, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const { filters, options, setDays, hasActiveFilters, activeFilterCount } = useFilter()
+  const { currentServer } = useServer()
   const [activeTab, setActiveTab] = useState('overview')
   const [refreshKey] = useState(0)
   const [filterPanelOpen, setFilterPanelOpen] = useState(false)
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false)
+  const [serverPanelOpen, setServerPanelOpen] = useState(false)
 
   return (
     <div className={cn('min-h-screen', hideChrome ? 'pb-6' : 'pb-24')}>
@@ -87,7 +91,16 @@ export function Layout({ children, hideChrome = false }: LayoutProps) {
                 )}
               </button>
               <div className="ml-1 sm:ml-2 pl-1 sm:pl-2 border-l border-[var(--color-border)] flex items-center gap-1 sm:gap-2">
-                <span className="text-xs text-[var(--color-text-muted)] hidden sm:inline">{username}</span>
+                <span className="text-xs text-[var(--color-text-muted)] hidden sm:inline">
+                  {currentServer ? currentServer.name : username}
+                </span>
+                <button
+                  onClick={() => setServerPanelOpen(true)}
+                  className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-foreground hover:bg-[var(--color-hover-overlay)] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  title="服务器管理"
+                >
+                  <Server className="w-4 h-4" />
+                </button>
                 <button
                   onClick={() => setSettingsPanelOpen(true)}
                   className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-foreground hover:bg-[var(--color-hover-overlay)] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
@@ -139,9 +152,15 @@ export function Layout({ children, hideChrome = false }: LayoutProps) {
             availableDevices={options?.devices || []}
           />
 
+          {/* Server Management Panel */}
+          <ServerManagementPanel
+            isOpen={serverPanelOpen}
+            onClose={() => setServerPanelOpen(false)}
+          />
+
           {/* 底部 Tab 导航 - 面板打开时隐藏，避免遮挡 */}
           <AnimatePresence>
-            {!filterPanelOpen && !settingsPanelOpen && (
+            {!filterPanelOpen && !settingsPanelOpen && !serverPanelOpen && (
               <motion.nav
                 initial={{ y: 16, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}

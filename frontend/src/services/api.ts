@@ -133,6 +133,73 @@ export const api = {
     const res = await fetch(`${API_BASE}/name-mappings/reload`, { method: 'POST' })
     return res.json()
   },
+
+  // 服务器管理相关
+  getServers: async (): Promise<{ servers: any[] }> => {
+    const res = await fetch(`${API_BASE}/config/servers`)
+    if (!res.ok) throw new Error(`Failed to fetch servers: ${res.status}`)
+    return res.json()
+  },
+
+  createServer: async (serverData: {
+    name: string
+    emby_url: string
+    playback_db: string
+    users_db: string
+    auth_db: string
+    emby_api_key?: string
+    is_default?: boolean
+  }): Promise<{ server_id: string }> => {
+    const res = await fetch(`${API_BASE}/config/servers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(serverData),
+    })
+    if (!res.ok) {
+      const error = await res.json()
+      throw new Error(error.detail || 'Failed to create server')
+    }
+    return res.json()
+  },
+
+  updateServer: async (serverId: string, serverData: Partial<{
+    name: string
+    emby_url: string
+    playback_db: string
+    users_db: string
+    auth_db: string
+    emby_api_key: string
+    is_default: boolean
+  }>): Promise<{ status: string }> => {
+    const res = await fetch(`${API_BASE}/config/servers/${serverId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(serverData),
+    })
+    if (!res.ok) {
+      const error = await res.json()
+      throw new Error(error.detail || 'Failed to update server')
+    }
+    return res.json()
+  },
+
+  deleteServer: async (serverId: string): Promise<{ status: string }> => {
+    const res = await fetch(`${API_BASE}/config/servers/${serverId}`, {
+      method: 'DELETE',
+    })
+    if (!res.ok) {
+      const error = await res.json()
+      throw new Error(error.detail || 'Failed to delete server')
+    }
+    return res.json()
+  },
+
+  // 文件浏览相关
+  browseFiles: async (path: string = '/'): Promise<{ files: any[] }> => {
+    const res = await fetch(`${API_BASE}/config/browse?path=${encodeURIComponent(path)}`)
+    if (!res.ok) throw new Error(`Failed to browse files: ${res.status}`)
+    return res.json()
+  },
 }
 
 export default api
