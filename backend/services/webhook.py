@@ -37,24 +37,29 @@ class WebhookService:
     
     def get_device_info(self, response: Dict[str, Any]) -> Dict[str, str]:
         """提取设备信息和IP地址"""
-        logger.debug("完整响应数据: %s", json.dumps(response, indent=2))
+        logger.debug("完整响应数据: %s", json.dumps(response, indent=2, ensure_ascii=False))
         
-        # 设备名称
+        # 设备名称 - 添加更多可能的位置
         device_name = (
             response.get("DeviceName") 
             or response.get("Client")
             or response.get("Session", {}).get("DeviceName")
             or response.get("Device", {}).get("DeviceName")
+            or response.get("Session", {}).get("Client")
+            or response.get("AppName")
+            or response.get("ClientName")
             or "未知设备"
         )
         
-        # IP地址提取
+        # IP地址提取 - 添加更多可能的位置
         ip_address = ""
         ip_sources = [
             "RemoteEndPoint",
             "Session.RemoteEndPoint",
             "PlaybackInfo.RemoteEndPoint",
-            "Device.RemoteEndPoint"
+            "Device.RemoteEndPoint",
+            "IpAddress",
+            "Session.IpAddress",
         ]
         
         for source in ip_sources:
@@ -66,11 +71,15 @@ class WebhookService:
                 
                 if value and isinstance(value, str):
                     ip = value.split(":")[0] if ":" in value else value
-                    if ip:
+                    if ip and ip != "Unknown":
                         ip_address = ip
+                        logger.info(f"从 {source} 提取到IP: {ip_address}")
                         break
-            except Exception:
+            except Exception as e:
+                logger.debug(f"从 {source} 提取IP失败: {e}")
                 continue
+        
+        logger.info(f"设备信息: device={device_name}, ip={ip_address}")
         
         return {
             "device_name": device_name,
@@ -101,8 +110,24 @@ class WebhookService:
             logger.error("缺少事件类型")
             return None
         
+        # 记录完整的webhook数据用于调试
+        logger.info(f"处理事件 {event}，完整数据: {json.dumps(response, indent=2, ensure_ascii=False)}")
+        
         user = response.get("User", {})
         user_name = user.get("Name", "未知用户")
+        
+        # 对于登录失败，用户名可能在不同位置
+        if event == "user.authenticationfailed":
+            # 尝试从不同位置获取用户名
+            user_name = (
+                user.get("Name") 
+                or response.get("Username")
+                or response.get("UserName")
+                or response.get("User", {}).get("Name")
+                or "未知用户"
+            )
+            logger.info(f"登录失败事件，提取用户名: {user_name}")
+        
         device_info = self.get_device_info(response)
         
         # 北京时间
