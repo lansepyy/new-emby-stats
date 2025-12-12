@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Chip } from '@/components/ui'
-import { Play, LayoutDashboard, Flame, Users, Monitor, History, FileText, LogOut, Sun, Moon, Filter, Settings, Bell, Server } from 'lucide-react'
+import { Play, LayoutDashboard, Flame, Users, Monitor, History, FileText, LogOut, Sun, Moon, Filter, Settings, Bell, Server, Heart } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -18,6 +18,7 @@ interface LayoutProps {
 const TABS = [
   { id: 'overview', label: '概览', icon: LayoutDashboard },
   { id: 'content', label: '热门', icon: Flame },
+  { id: 'favorites', label: '收藏', icon: Heart },
   { id: 'users', label: '用户', icon: Users },
   { id: 'devices', label: '设备', icon: Monitor },
   { id: 'history', label: '历史', icon: History },

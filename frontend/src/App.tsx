@@ -1,6 +1,6 @@
 import { Layout } from '@/components/Layout'
 import { NowPlaying } from '@/components/NowPlaying'
-import { Overview, Content, Users, Devices, History, Login, Notifications, NotificationTemplates } from '@/pages'
+import { Overview, Content, Users, Devices, History, Login, Notifications, NotificationTemplates, Favorites } from '@/pages'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
 import { useFilter } from '@/contexts/FilterContext'
@@ -58,6 +58,7 @@ function App() {
             >
               {activeTab === 'overview' && <Overview filterParams={filterParams} />}
               {activeTab === 'content' && <Content filterParams={filterParams} />}
+              {activeTab === 'favorites' && <Favorites filterParams={filterParams} />}
               {activeTab === 'users' && <Users filterParams={filterParams} />}
               {activeTab === 'devices' && <Devices filterParams={filterParams} />}
               {activeTab === 'history' && <History filterParams={filterParams} />}

@@ -318,3 +318,148 @@ async def get_backdrop(
         media_type=content_type,
         headers={"Cache-Control": "public, max-age=86400"} if content else {}
     )
+
+
+@router.get("/favorites")
+async def get_favorites(
+    days: int = Query(default=30, ge=1, le=365),
+    start_date: Optional[str] = Query(default=None),
+    end_date: Optional[str] = Query(default=None),
+    item_type: Optional[str] = Query(default=None),
+):
+    """获取用户收藏统计
+    
+    返回格式：
+    - by_user: 按用户分组的收藏列表，每个用户包含其收藏的项目列表
+    - ranking: 收藏次数最多的项目排行榜
+    - stats: 统计信息（总收藏数、用户数、电影/剧集数）
+    """
+    type_list = [item_type] if item_type else None
+    
+    where_clause, params = build_filter_conditions(
+        days=days if not (start_date or end_date) else None,
+        start_date=start_date,
+        end_date=end_date,
+        item_types=type_list,
+    )
+
+    async with get_playback_db() as db:
+        # 1. 获取按用户分组的收藏（只获取IsFavorite=1的记录）
+        user_favorites_query = f"""
+            SELECT
+                UserId,
+                ItemId,
+                ItemName,
+                ItemType,
+                MAX(DateCreated) as last_favorited
+            FROM PlaybackActivity
+            WHERE {where_clause} AND IsFavorite = 1
+            GROUP BY UserId, ItemId
+            ORDER BY UserId, last_favorited DESC
+        """
+        
+        user_favorites_map = defaultdict(list)
+        all_item_ids = set()
+        stats_movie_ids = set()
+        stats_episode_ids = set()
+        
+        async with db.execute(user_favorites_query, params) as cursor:
+            async for row in cursor:
+                user_id = row[0]
+                item_id = row[1]
+                item_name = row[2]
+                item_type = row[3]
+                last_favorited = row[4]
+                
+                user_favorites_map[user_id].append({
+                    "item_id": item_id,
+                    "item_name": item_name,
+                    "item_type": item_type,
+                    "last_favorited": last_favorited
+                })
+                all_item_ids.add(item_id)
+                
+                # 统计不同类型的收藏数
+                if item_type == "Movie":
+                    stats_movie_ids.add(item_id)
+                elif item_type == "Episode":
+                    stats_episode_ids.add(item_id)
+        
+        # 2. 获取收藏排行榜（按收藏人数统计）
+        ranking_query = f"""
+            SELECT
+                ItemId,
+                ItemName,
+                ItemType,
+                COUNT(DISTINCT UserId) as favorite_count
+            FROM PlaybackActivity
+            WHERE {where_clause} AND IsFavorite = 1
+            GROUP BY ItemId
+            ORDER BY favorite_count DESC
+            LIMIT 50
+        """
+        
+        ranking_list = []
+        async with db.execute(ranking_query, params) as cursor:
+            async for row in cursor:
+                ranking_list.append({
+                    "item_id": row[0],
+                    "item_name": row[1],
+                    "item_type": row[2],
+                    "favorite_count": row[3]
+                })
+        
+        # 3. 获取总用户数
+        total_users_query = "SELECT COUNT(DISTINCT UserId) FROM PlaybackActivity WHERE UserId IS NOT NULL"
+        async with db.execute(total_users_query) as cursor:
+            row = await cursor.fetchone()
+            total_users = row[0] if row else 0
+        
+        # 4. 获取用户信息并计算每个用户的电影/剧集收藏数
+        user_list = []
+        for user_id, favorites in user_favorites_map.items():
+            user_info = await emby_service.get_user_info(user_id)
+            
+            movie_count = sum(1 for f in favorites if f["item_type"] == "Movie")
+            episode_count = sum(1 for f in favorites if f["item_type"] == "Episode")
+            
+            user_list.append({
+                "user_id": user_id,
+                "username": user_info.get("Name", user_id) if user_info else user_id,
+                "favorites": favorites,
+                "favorite_count": len(favorites),
+                "movie_count": movie_count,
+                "episode_count": episode_count
+            })
+        
+        # 按收藏数量排序
+        user_list.sort(key=lambda x: x["favorite_count"], reverse=True)
+        
+        # 5. 为每个项目获取海报信息
+        for item in ranking_list:
+            poster_info = await emby_service.get_item_images(item["item_id"])
+            item["poster_url"] = poster_info.get("poster_url")
+            item["backdrop_url"] = poster_info.get("backdrop_url")
+            item["overview"] = poster_info.get("overview")
+        
+        for user in user_list:
+            for fav in user["favorites"]:
+                poster_info = await emby_service.get_item_images(fav["item_id"])
+                fav["poster_url"] = poster_info.get("poster_url")
+                fav["backdrop_url"] = poster_info.get("backdrop_url")
+                fav["overview"] = poster_info.get("overview")
+        
+        # 6. 计算统计信息
+        stats = {
+            "total_favorites": len(all_item_ids),
+            "total_users": total_users,
+            "active_users": len(user_favorites_map),
+            "movie_count": len(stats_movie_ids),
+            "episode_count": len(stats_episode_ids)
+        }
+        
+        return {
+            "by_user": user_list,
+            "ranking": ranking_list,
+            "stats": stats
+        }
