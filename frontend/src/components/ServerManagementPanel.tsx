@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Plus, Trash2, Edit2, Server as ServerIcon, Loader2, Check, FolderOpen, ChevronDown, ChevronUp } from 'lucide-react'
+import { X, Plus, Trash2, Edit2, Server as ServerIcon, Loader2, Check, FolderOpen } from 'lucide-react'
 import { api } from '@/services/api'
 import { useServer, type Server } from '@/contexts/ServerContext'
 import { FilePickerModal } from './FilePickerModal'
@@ -15,7 +15,6 @@ export function ServerManagementPanel({ isOpen, onClose }: ServerManagementPanel
   const [isLoading, setIsLoading] = useState(false)
   const [editingServer, setEditingServer] = useState<Server | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
-  const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
   const [formData, setFormData] = useState({
     name: '',
     emby_url: '',
@@ -30,21 +29,10 @@ export function ServerManagementPanel({ isOpen, onClose }: ServerManagementPanel
   const [filePickerOpen, setFilePickerOpen] = useState(false)
   const [filePickerField, setFilePickerField] = useState<'playback_db' | 'users_db' | 'auth_db'>('playback_db')
 
-  const toggleServerExpand = (serverId: string) => {
-    const newExpanded = new Set(expandedServers)
-    if (newExpanded.has(serverId)) {
-      newExpanded.delete(serverId)
-    } else {
-      newExpanded.add(serverId)
-    }
-    setExpandedServers(newExpanded)
-  }
-
   useEffect(() => {
     if (!isOpen) {
       setShowAddForm(false)
       setEditingServer(null)
-      setExpandedServers(new Set())
       setFormData({
         name: '',
         emby_url: '',
