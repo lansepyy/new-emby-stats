@@ -139,25 +139,17 @@ class TMDBService:
                 logger.debug("媒体项缺少ID")
                 return None
             
-            # 检查是否是.strm文件（通常不会有有效的图片）
-            file_name = item.get("FileName", "")
-            if file_name.endswith(".strm"):
-                logger.debug(f"跳过.strm文件的图片获取: {file_name}")
-                return None
-            
             # 尝试背景图
             image_url = f"{self.emby_server}/Items/{item_id}/Images/Backdrop?fillWidth=1280&fillHeight=720&quality=90"
             if self.verify_image_url(image_url):
                 logger.info(f"使用Emby背景图: {image_url}")
                 return image_url
             
-            # 回退主图（竖图转横图）
-            image_url = f"{self.emby_server}/Items/{item_id}/Images/Primary?quality=90"
+            # 回退主图（海报）
+            image_url = f"{self.emby_server}/Items/{item_id}/Images/Primary?fillWidth=800&quality=90"
             if self.verify_image_url(image_url):
-                encoded = image_url.replace("https://", "").replace("http://", "")
-                converted_url = f"https://images.weserv.nl/?url={encoded}&fit=contain&width=1280&height=720&bg=000000"
-                logger.info(f"使用Emby主图（已转换）: {converted_url}")
-                return converted_url
+                logger.info(f"使用Emby海报图: {image_url}")
+                return image_url
             
             logger.debug(f"未找到有效的Emby图片: {item_id}")
         

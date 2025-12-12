@@ -3,6 +3,9 @@ import logging
 from typing import Optional
 import requests
 from jinja2 import Template
+import tempfile
+import os
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -46,31 +49,134 @@ class NotificationService:
         for chat_id in all_recipients:
             try:
                 if image_url:
-                    url = f"https://api.telegram.org/bot{token}/sendPhoto"
-                    data = {
-                        "chat_id": chat_id,
-                        "photo": image_url,
-                        "caption": full_message,
-                        "parse_mode": "HTML",
-                    }
+                    # 尝试使用URL直接发送
+                    success = self._send_telegram_photo_url(token, chat_id, image_url, full_message)
+                    
+                    # 如果URL发送失败，尝试下载后上传文件
+                    if not success:
+                        logger.info(f"URL发送失败，尝试下载图片后上传")
+                        success = self._send_telegram_photo_file(token, chat_id, image_url, full_message)
+                    
+                    # 如果都失败，发送纯文本
+                    if not success:
+                        logger.warning(f"图片发送失败，改为发送纯文本")
+                        self._send_telegram_text(token, chat_id, full_message)
                 else:
-                    url = f"https://api.telegram.org/bot{token}/sendMessage"
-                    data = {
-                        "chat_id": chat_id,
-                        "text": full_message,
-                        "parse_mode": "HTML",
-                        "disable_web_page_preview": True
-                    }
-                
-                resp = requests.post(url, data=data, timeout=15)
-                
-                if resp.status_code == 200 and resp.json().get("ok"):
-                    logger.info(f"Telegram通知发送成功至 {chat_id}")
-                else:
-                    logger.error(f"Telegram响应异常: {resp.text}")
+                    self._send_telegram_text(token, chat_id, full_message)
             
             except Exception as e:
                 logger.error(f"Telegram通知发送失败: {str(e)}")
+    
+    def _send_telegram_photo_url(self, token: str, chat_id: str, photo_url: str, caption: str) -> bool:
+        """通过URL发送Telegram图片"""
+        try:
+            url = f"https://api.telegram.org/bot{token}/sendPhoto"
+            data = {
+                "chat_id": chat_id,
+                "photo": photo_url,
+                "caption": caption,
+                "parse_mode": "HTML",
+            }
+            
+            resp = requests.post(url, data=data, timeout=15)
+            
+            if resp.status_code == 200 and resp.json().get("ok"):
+                logger.info(f"Telegram图片(URL)发送成功至 {chat_id}")
+                return True
+            else:
+                logger.warning(f"Telegram URL发送失败: {resp.text}")
+                return False
+        
+        except Exception as e:
+            logger.warning(f"Telegram URL发送异常: {str(e)}")
+            return False
+    
+    def _send_telegram_photo_file(self, token: str, chat_id: str, photo_url: str, caption: str) -> bool:
+        """下载图片后通过文件上传方式发送"""
+        temp_file = None
+        try:
+            # 下载图片
+            logger.info(f"开始下载图片: {photo_url}")
+            resp = requests.get(photo_url, timeout=30, stream=True)
+            
+            if resp.status_code != 200:
+                logger.warning(f"图片下载失败: HTTP {resp.status_code}")
+                return False
+            
+            # 获取文件扩展名
+            content_type = resp.headers.get('Content-Type', '')
+            ext = '.jpg'
+            if 'png' in content_type:
+                ext = '.png'
+            elif 'jpeg' in content_type or 'jpg' in content_type:
+                ext = '.jpg'
+            elif 'webp' in content_type:
+                ext = '.webp'
+            
+            # 创建临时文件
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+            
+            # 写入图片数据
+            for chunk in resp.iter_content(chunk_size=8192):
+                temp_file.write(chunk)
+            
+            temp_file.close()
+            
+            # 通过文件上传发送
+            url = f"https://api.telegram.org/bot{token}/sendPhoto"
+            with open(temp_file.name, 'rb') as photo:
+                files = {'photo': photo}
+                data = {
+                    'chat_id': chat_id,
+                    'caption': caption,
+                    'parse_mode': 'HTML'
+                }
+                
+                resp = requests.post(url, data=data, files=files, timeout=30)
+                
+                if resp.status_code == 200 and resp.json().get("ok"):
+                    logger.info(f"Telegram图片(文件)发送成功至 {chat_id}")
+                    return True
+                else:
+                    logger.error(f"Telegram文件上传失败: {resp.text}")
+                    return False
+        
+        except Exception as e:
+            logger.error(f"Telegram文件上传异常: {str(e)}")
+            return False
+        
+        finally:
+            # 清理临时文件
+            if temp_file and os.path.exists(temp_file.name):
+                try:
+                    os.unlink(temp_file.name)
+                    logger.debug(f"临时文件已删除: {temp_file.name}")
+                except Exception as e:
+                    logger.warning(f"临时文件删除失败: {str(e)}")
+    
+    def _send_telegram_text(self, token: str, chat_id: str, text: str) -> bool:
+        """发送Telegram纯文本消息"""
+        try:
+            url = f"https://api.telegram.org/bot{token}/sendMessage"
+            data = {
+                "chat_id": chat_id,
+                "text": text,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True
+            }
+            
+            resp = requests.post(url, data=data, timeout=15)
+            
+            if resp.status_code == 200 and resp.json().get("ok"):
+                logger.info(f"Telegram文本发送成功至 {chat_id}")
+                return True
+            else:
+                logger.error(f"Telegram文本发送失败: {resp.text}")
+                return False
+        
+        except Exception as e:
+            logger.error(f"Telegram文本发送异常: {str(e)}")
+            return False
     
     def send_wecom(self, title: str, message: str, image_url: Optional[str] = None):
         """发送企业微信通知"""
