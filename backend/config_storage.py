@@ -3,6 +3,8 @@ import json
 import os
 from typing import Dict, Any
 import logging
+import uuid
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,7 @@ DEFAULT_CONFIG = {
             "discord": False
         }
     },
+    "servers": {},
     "templates": {
         "default": {
             "title": "{% if action == '新入库' and media_type == '电影' %}🎬 {% elif action == '新入库' and media_type == '剧集' %}📺 {% elif action == '新入库' and media_type == '有声书' %}📚 {% elif action == '新入库' %}🆕 {% elif action == '测试' %}🧪 {% elif action == '开始播放' %}▶️ {% elif action == '停止播放' %}⏹️ {% elif action == '登录成功' %}✅ {% elif action == '登录失败' %}❌ {% elif action == '标记了' %}🏷️ {% endif %}{% if user_name %}【{{ user_name }}】{% endif %}{{ action }}{% if media_type %} {{ media_type }} {% endif %}{{ item_name }}",
@@ -77,6 +80,7 @@ class ConfigStorage:
     def __init__(self, config_file: str = CONFIG_FILE):
         self.config_file = config_file
         self._ensure_config_exists()
+        self._ensure_default_server()
     
     def _ensure_config_exists(self):
         """确保配置文件存在"""
@@ -86,6 +90,29 @@ class ConfigStorage:
             # 创建默认配置
             self.save_config(DEFAULT_CONFIG)
             logger.info(f"创建默认配置文件: {self.config_file}")
+    
+    def _ensure_default_server(self):
+        """确保至少有一个默认服务器配置"""
+        config = self.load_config()
+        servers = config.get("servers", {})
+        
+        # 如果没有任何服务器，创建默认服务器
+        if not servers:
+            from config import settings
+            default_server_id = str(uuid.uuid4())
+            servers[default_server_id] = {
+                "name": "默认服务器",
+                "emby_url": settings.EMBY_URL,
+                "playback_db": settings.PLAYBACK_DB,
+                "users_db": settings.USERS_DB,
+                "auth_db": settings.AUTH_DB,
+                "emby_api_key": settings.EMBY_API_KEY,
+                "is_default": True,
+                "created_at": datetime.now().isoformat()
+            }
+            config["servers"] = servers
+            self.save_config(config)
+            logger.info(f"创建默认服务器配置: {default_server_id}")
     
     def load_config(self) -> Dict[str, Any]:
         """加载配置"""
@@ -137,6 +164,11 @@ class ConfigStorage:
         """获取通知模板"""
         config = self.load_config()
         return config.get("templates", DEFAULT_CONFIG["templates"])
+    
+    def get(self, key: str, default=None) -> Any:
+        """获取配置项"""
+        config = self.load_config()
+        return config.get(key, default)
     
     def update_section(self, section: str, data: Dict[str, Any]):
         """更新配置的某个部分"""
