@@ -209,98 +209,55 @@ export function ServerManagementPanel({ isOpen, onClose }: ServerManagementPanel
                   </div>
 
                   <div className="space-y-2">
-                    {servers.map((server) => {
-                      const isExpanded = expandedServers.has(server.id)
-                      return (
-                        <div
-                          key={server.id}
-                          className={`rounded-lg border ${
-                            currentServer?.id === server.id
-                              ? 'border-primary bg-primary/5'
-                              : 'border-[var(--color-border)] bg-content1'
-                          }`}
-                        >
-                          <div 
-                            className="p-3 cursor-pointer hover:bg-content2/50 rounded-lg transition-colors"
-                            onClick={() => toggleServerExpand(server.id)}
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-medium truncate">{server.name}</h4>
-                                  {server.is_default && (
-                                    <span className="px-2 py-0.5 text-xs rounded bg-primary/20 text-primary">
-                                      默认
-                                    </span>
-                                  )}
-                                  {currentServer?.id === server.id && (
-                                    <span className="px-2 py-0.5 text-xs rounded bg-success/20 text-success">
-                                      当前
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-sm text-[var(--color-text-muted)] mt-1 truncate">
-                                  {server.emby_url}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-1 ml-2">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleEdit(server)
-                                  }}
-                                  className="p-1.5 rounded hover:bg-[var(--color-hover-overlay)] transition-colors"
-                                  title="编辑"
-                                >
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                                {servers.length > 1 && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleDelete(server.id)
-                                    }}
-                                    className="p-1.5 rounded hover:bg-danger/10 text-danger transition-colors"
-                                    title="删除"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                                <div className="p-1">
-                                  {isExpanded ? (
-                                    <ChevronUp className="w-4 h-4" />
-                                  ) : (
-                                    <ChevronDown className="w-4 h-4" />
-                                  )}
-                                </div>
-                              </div>
+                    {servers.map((server) => (
+                      <div
+                        key={server.id}
+                        className={`p-3 rounded-lg border ${
+                          currentServer?.id === server.id
+                            ? 'border-primary bg-primary/5'
+                            : 'border-[var(--color-border)] bg-content1'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium truncate">{server.name}</h4>
+                              {server.is_default && (
+                                <span className="px-2 py-0.5 text-xs rounded bg-primary/20 text-primary">
+                                  默认
+                                </span>
+                              )}
+                              {currentServer?.id === server.id && (
+                                <span className="px-2 py-0.5 text-xs rounded bg-success/20 text-success">
+                                  当前
+                                </span>
+                              )}
                             </div>
+                            <p className="text-sm text-[var(--color-text-muted)] mt-1 truncate">
+                              {server.emby_url}
+                            </p>
                           </div>
-                          
-                          {/* 展开后显示详细配置 */}
-                          {isExpanded && (
-                            <div className="px-3 pb-3 pt-0 space-y-2 text-sm border-t border-[var(--color-border)] mt-2">
-                              <div className="grid grid-cols-[120px_1fr] gap-2 py-2">
-                                <span className="text-[var(--color-text-muted)]">播放记录数据库:</span>
-                                <span className="text-xs font-mono break-all">{(server as any).playback_db || '未配置'}</span>
-                              </div>
-                              <div className="grid grid-cols-[120px_1fr] gap-2 py-2">
-                                <span className="text-[var(--color-text-muted)]">用户数据库:</span>
-                                <span className="text-xs font-mono break-all">{(server as any).users_db || '未配置'}</span>
-                              </div>
-                              <div className="grid grid-cols-[120px_1fr] gap-2 py-2">
-                                <span className="text-[var(--color-text-muted)]">认证数据库:</span>
-                                <span className="text-xs font-mono break-all">{(server as any).auth_db || '未配置'}</span>
-                              </div>
-                              <div className="grid grid-cols-[120px_1fr] gap-2 py-2">
-                                <span className="text-[var(--color-text-muted)]">API Key:</span>
-                                <span className="text-xs font-mono break-all">{(server as any).emby_api_key ? '••••••••' : '未配置'}</span>
-                              </div>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1 ml-2">
+                            <button
+                              onClick={() => handleEdit(server)}
+                              className="p-1.5 rounded hover:bg-[var(--color-hover-overlay)] transition-colors"
+                              title="编辑"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            {servers.length > 1 && (
+                              <button
+                                onClick={() => handleDelete(server.id)}
+                                className="p-1.5 rounded hover:bg-danger/10 text-danger transition-colors"
+                                title="删除"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      )
-                    })}
+                      </div>
+                    ))}
                   </div>
                 </>
               )}
