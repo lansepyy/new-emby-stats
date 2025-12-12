@@ -61,6 +61,25 @@ class EmbyService:
             print(f"Error getting user ID: {e}")
         return ""
 
+    async def get_user_info(self, user_id: str) -> dict:
+        """获取用户信息"""
+        try:
+            api_key = await self.get_api_key()
+            if not api_key:
+                return {}
+
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{settings.EMBY_URL}/emby/Users/{user_id}",
+                    params={"api_key": api_key},
+                    timeout=10
+                )
+                if resp.status_code == 200:
+                    return resp.json()
+        except Exception as e:
+            print(f"Error getting user info for {user_id}: {e}")
+        return {}
+
     async def get_item_info(self, item_id: str) -> dict:
         """获取媒体项目信息（包含海报等）"""
         if item_id in self._item_info_cache:
