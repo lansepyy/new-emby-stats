@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Card, PosterCard, PosterGridSkeleton, Avatar } from '@/components/ui'
-import { Heart, Users, TrendingUp, Search, ChevronDown, ChevronUp, Film, Tv2 } from 'lucide-react'
+import { Heart, Users, TrendingUp, Search, ChevronDown, ChevronUp, Film } from 'lucide-react'
 import type { FilterParams } from '@/services/api'
 
 interface FavoriteItem {
@@ -221,8 +221,6 @@ export function Favorites({ filterParams }: FavoritesProps) {
           ) : (
             filteredUsers.map((user, index) => {
               const isExpanded = expandedUsers.has(user.user_id)
-              const previewCount = 6
-              const hasMore = user.favorites.length > previewCount
               
               return (
                 <div key={user.user_id}>
