@@ -5,7 +5,7 @@
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
 from database import get_playback_db, get_count_expr
-from services.emby import emby_service
+from services.users import user_service
 
 
 class ReportService:
@@ -110,11 +110,11 @@ class ReportService:
             """
             
             top_users = []
+            user_map = await user_service.get_user_map()
             async with db.execute(top_users_query, [start_date, end_date]) as cursor:
                 async for row in cursor:
                     user_id = row[0]
-                    user_info = await emby_service.get_user_info(user_id)
-                    username = user_info.get("Name", user_id) if user_info else user_id
+                    username = user_service.match_username(user_id, user_map)
                     top_users.append({
                         "username": username,
                         "play_count": int(row[1] or 0),
