@@ -3,9 +3,13 @@
 生成和发送观影统计报告
 """
 from datetime import datetime, timedelta
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from database import get_playback_db, get_count_expr
 from services.users import user_service
+from services.emby import EmbyService
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ReportService:
@@ -71,11 +75,12 @@ class ReportService:
                 total_duration = int(row[1] or 0)
                 total_hours = round(total_duration / 3600, 1)
             
-            # 2. 热门内容 Top 5
+            # 2. 热门内容 Top 5（需要获取ItemId）
             top_content_query = f"""
                 SELECT 
                     ItemName,
                     ItemType,
+                    ItemId,
                     {count_expr} as play_count,
                     COALESCE(SUM(PlayDuration), 0) / 3600.0 as hours
                 FROM PlaybackActivity
@@ -91,8 +96,9 @@ class ReportService:
                     top_content.append({
                         "name": row[0] or "未知",
                         "type": row[1] or "未知",
-                        "play_count": int(row[2] or 0),
-                        "hours": round(row[3] or 0, 1)
+                        "item_id": row[2],
+                        "play_count": int(row[3] or 0),
+                        "hours": round(row[4] or 0, 1)
                     })
             
             # 3. 活跃用户 Top 5
@@ -152,6 +158,46 @@ class ReportService:
                 "top_users": top_users,
                 "type_stats": type_stats
             }
+    
+    async def get_cover_images(self, report: Dict[str, Any], emby_server: str) -> List[Optional[bytes]]:
+        """获取热门内容的封面图片
+        
+        Args:
+            report: 报告数据
+            emby_server: Emby服务器地址
+        
+        Returns:
+            封面图片字节列表
+        """
+        import httpx
+        
+        images = []
+        top_content = report.get('top_content', [])[:5]
+        
+        async with httpx.AsyncClient() as client:
+            for item in top_content:
+                item_id = item.get('item_id')
+                if not item_id or not emby_server:
+                    images.append(None)
+                    continue
+                
+                try:
+                    # 尝试获取Primary图片
+                    image_url = f"{emby_server}/Items/{item_id}/Images/Primary?maxWidth=200&quality=90"
+                    response = await client.get(image_url, timeout=10)
+                    
+                    if response.status_code == 200:
+                        images.append(response.content)
+                        logger.info(f"成功获取封面: {item['name']}")
+                    else:
+                        images.append(None)
+                        logger.warning(f"封面获取失败: {item['name']}, HTTP {response.status_code}")
+                
+                except Exception as e:
+                    logger.warning(f"封面下载异常: {item['name']}, {e}")
+                    images.append(None)
+        
+        return images
     
     def format_report_text(self, report: Dict[str, Any]) -> str:
         """将报告格式化为文本"""

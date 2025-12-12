@@ -178,6 +178,27 @@ class NotificationService:
             logger.error(f"Telegram文本发送异常: {str(e)}")
             return False
     
+    def _send_telegram_photo_file_direct(self, token: str, chat_ids: list, photo_bytes: bytes, caption: str):
+        """直接发送图片字节到多个chat_id"""
+        for chat_id in chat_ids:
+            try:
+                url = f"https://api.telegram.org/bot{token}/sendPhoto"
+                files = {'photo': ('report.png', photo_bytes, 'image/png')}
+                data = {
+                    'chat_id': chat_id,
+                    'caption': caption,
+                }
+                
+                resp = requests.post(url, data=data, files=files, timeout=30)
+                
+                if resp.status_code == 200 and resp.json().get("ok"):
+                    logger.info(f"Telegram图片发送成功至 {chat_id}")
+                else:
+                    logger.error(f"Telegram图片发送失败: {resp.text}")
+            
+            except Exception as e:
+                logger.error(f"Telegram图片发送异常: {str(e)}")
+    
     def send_wecom(self, title: str, message: str, image_url: Optional[str] = None):
         """发送企业微信通知"""
         required_fields = ["corp_id", "secret", "agent_id"]
