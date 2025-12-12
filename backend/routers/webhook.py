@@ -23,7 +23,9 @@ async def handle_emby_webhook(request: Request):
     try:
         # 获取请求体
         data = await request.json()
-        logger.info(f"收到Emby webhook事件: {data.get('Event', 'Unknown')}")
+        event_type = data.get('Event', 'Unknown')
+        logger.info(f"收到Emby webhook事件: {event_type}")
+        logger.info(f"完整webhook数据: {data}")
         
         # 构建事件上下文
         context = webhook_service.build_event_context(data)
