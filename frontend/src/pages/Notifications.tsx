@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card } from '@/components/ui'
 import { Settings, Bell, MessageSquare, Film, Save, TestTube } from 'lucide-react'
+import html2canvas from 'html2canvas'
+import { ReportImage } from '@/components/ReportImage'
 
 export function Notifications() {
   const [activeSection, setActiveSection] = useState<'telegram' | 'wecom' | 'discord' | 'tmdb' | 'report'>('telegram')
@@ -10,6 +12,7 @@ export function Notifications() {
   const [testMessage, setTestMessage] = useState('')
   const [isSendingReport, setIsSendingReport] = useState(false)
   const [reportMessage, setReportMessage] = useState('')
+  const reportRef = useRef<HTMLDivElement>(null)
 
   // Telegram配置
   const [telegramConfig, setTelegramConfig] = useState({
@@ -188,10 +191,70 @@ export function Notifications() {
     setIsSendingReport(true)
     setReportMessage('')
     try {
-      const response = await fetch(`/api/report/send?type=${type}`, {
-        method: 'POST'
+      // 1. 获取报告数据
+      const reportResponse = await fetch(`/api/report/generate?type=${type}`)
+      if (!reportResponse.ok) throw new Error('获取报告数据失败')
+      const reportData = await reportResponse.json()
+
+      // 2. 获取封面图片
+      const coverImages: Record<string, string> = {}
+      for (const item of reportData.top_content.slice(0, 5)) {
+        if (item.item_id) {
+          try {
+            const imgResponse = await fetch(`/api/poster/${item.item_id}?maxHeight=120&maxWidth=90`)
+            if (imgResponse.ok) {
+              const blob = await imgResponse.blob()
+              coverImages[item.item_id] = URL.createObjectURL(blob)
+            }
+          } catch (e) {
+            console.warn(`封面获取失败: ${item.name}`, e)
+          }
+        }
+      }
+
+      // 3. 渲染报告组件并生成图片
+      const reportElement = document.createElement('div')
+      reportElement.style.position = 'absolute'
+      reportElement.style.left = '-9999px'
+      document.body.appendChild(reportElement)
+
+      const { createRoot } = await import('react-dom/client')
+      const root = createRoot(reportElement)
+      
+      await new Promise<void>((resolve) => {
+        root.render(
+          <ReportImage data={reportData} coverImages={coverImages} />
+        )
+        setTimeout(resolve, 500) // 等待渲染完成
       })
-      if (response.ok) {
+
+      const canvas = await html2canvas(reportElement.querySelector('div')!, {
+        backgroundColor: '#1a202c',
+        scale: 2,
+        logging: false,
+        useCORS: true,
+      })
+
+      // 清理
+      root.unmount()
+      document.body.removeChild(reportElement)
+      Object.values(coverImages).forEach(url => URL.revokeObjectURL(url))
+
+      // 4. 转换为Blob并上传
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((b) => resolve(b!), 'image/png', 0.95)
+      })
+
+      const formData = new FormData()
+      formData.append('image', blob, 'report.png')
+      formData.append('type', type)
+
+      const sendResponse = await fetch('/api/report/send-image', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (sendResponse.ok) {
         setReportMessage(`✅ ${type === 'daily' ? '每日' : type === 'weekly' ? '每周' : '每月'}报告已发送！`)
       } else {
         setReportMessage('❌ 发送失败，请检查配置')
