@@ -171,6 +171,24 @@ class EmbyService:
 
         return None
 
+    async def get_item_images(self, item_id: str) -> dict:
+        """获取项目的图片URL和概述信息"""
+        try:
+            item_info = await self.get_item_info(item_id)
+            if not item_info:
+                return {}
+            
+            item_type = item_info.get("Type", "")
+            
+            return {
+                "poster_url": self.get_poster_url(item_id, item_type, item_info),
+                "backdrop_url": self.get_backdrop_url(item_id, item_type, item_info),
+                "overview": item_info.get("Overview", "")
+            }
+        except Exception as e:
+            print(f"Error getting item images for {item_id}: {e}")
+            return {}
+
     async def get_now_playing(self) -> list[dict]:
         """获取当前正在播放的会话"""
         try:
