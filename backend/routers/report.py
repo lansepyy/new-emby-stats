@@ -97,6 +97,23 @@ async def send_report_image(
             except Exception as e:
                 logger.error(f"Telegram 发送失败: {e}")
         
+        if channels.get("wecom") and wecom_config.get("corp_id"):
+            try:
+                if notification_service._send_wecom_photo_bytes(image_bytes, caption):
+                    sent_count += 1
+                    logger.info("报告图片已通过企业微信发送")
+            except Exception as e:
+                logger.error(f"企业微信发送失败: {e}")
+        
+        if channels.get("discord") and discord_config.get("webhook_url"):
+            try:
+                if notification_service._send_discord_photo_bytes(image_bytes, caption):
+                    sent_count += 1
+                    logger.info("报告图片已通过 Discord 发送")
+            except Exception as e:
+                logger.error(f"Discord 发送失败: {e}")
+
+        
         if sent_count == 0:
             raise HTTPException(status_code=400, detail="没有可用的推送渠道或发送失败")
         

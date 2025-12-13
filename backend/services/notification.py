@@ -5,6 +5,7 @@ import requests
 from jinja2 import Template
 import tempfile
 import os
+import json
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -198,6 +199,132 @@ class NotificationService:
             
             except Exception as e:
                 logger.error(f"Telegram图片发送异常: {str(e)}")
+    
+    def _send_wecom_photo_bytes(self, photo_bytes: bytes, caption: str):
+        """发送企业微信图片（从字节）"""
+        required_fields = ["corp_id", "secret", "agent_id"]
+        if not all(self.wecom_config.get(field) for field in required_fields):
+            logger.warning("企业微信配置不完整，跳过发送")
+            return False
+        
+        try:
+            # 获取access_token
+            proxy_url = self.wecom_config.get("proxy_url", "https://qyapi.weixin.qq.com")
+            token_url = f"{proxy_url}/cgi-bin/gettoken"
+            params = {
+                "corpid": self.wecom_config["corp_id"],
+                "corpsecret": self.wecom_config["secret"]
+            }
+            
+            token_res = requests.get(token_url, params=params, timeout=10)
+            token_data = token_res.json()
+            
+            if token_data.get("errcode") != 0:
+                logger.error(f"获取企业微信token失败: {token_data}")
+                return False
+            
+            access_token = token_data["access_token"]
+            
+            # 上传图片获取media_id
+            upload_url = f"{proxy_url}/cgi-bin/media/upload"
+            files = {'media': ('report.png', photo_bytes, 'image/png')}
+            upload_params = {
+                "access_token": access_token,
+                "type": "image"
+            }
+            
+            upload_res = requests.post(upload_url, params=upload_params, files=files, timeout=30)
+            upload_data = upload_res.json()
+            
+            if upload_data.get("errcode") != 0 and "media_id" not in upload_data:
+                logger.error(f"企业微信图片上传失败: {upload_data}")
+                return False
+            
+            media_id = upload_data["media_id"]
+            
+            # 发送图片消息
+            send_url = f"{proxy_url}/cgi-bin/message/send"
+            to_user = self.wecom_config.get("to_user", "@all")
+            
+            data = {
+                "touser": to_user,
+                "msgtype": "image",
+                "agentid": self.wecom_config["agent_id"],
+                "image": {
+                    "media_id": media_id
+                }
+            }
+            
+            send_res = requests.post(
+                send_url,
+                params={"access_token": access_token},
+                json=data,
+                timeout=10
+            )
+            
+            send_data = send_res.json()
+            if send_data.get("errcode") == 0:
+                logger.info("企业微信图片发送成功")
+                
+                # 如果有标题，再发送一条文本消息
+                if caption:
+                    text_data = {
+                        "touser": to_user,
+                        "msgtype": "text",
+                        "agentid": self.wecom_config["agent_id"],
+                        "text": {
+                            "content": caption
+                        }
+                    }
+                    requests.post(
+                        send_url,
+                        params={"access_token": access_token},
+                        json=text_data,
+                        timeout=10
+                    )
+                
+                return True
+            else:
+                logger.error(f"企业微信图片消息发送失败: {send_data}")
+                return False
+        
+        except Exception as e:
+            logger.error(f"企业微信图片发送异常: {str(e)}")
+            return False
+    
+    def _send_discord_photo_bytes(self, photo_bytes: bytes, caption: str):
+        """发送Discord图片（从字节）"""
+        webhook_url = self.discord_config.get("webhook_url")
+        if not webhook_url:
+            logger.warning("Discord webhook未配置，跳过发送")
+            return False
+        
+        try:
+            files = {'file': ('report.png', photo_bytes, 'image/png')}
+            payload = {
+                "username": self.discord_config.get("username", "New Emby Stats"),
+                "content": caption
+            }
+            
+            # Discord webhook支持multipart/form-data上传文件
+            response = requests.post(
+                webhook_url,
+                data={"payload_json": json.dumps(payload)},
+                files=files,
+                timeout=30
+            )
+            
+            if response.status_code in (200, 204):
+                logger.info("Discord图片发送成功")
+                return True
+            else:
+                logger.error(f"Discord图片发送失败: {response.status_code} - {response.text}")
+                return False
+        
+        except Exception as e:
+            logger.error(f"Discord图片发送异常: {str(e)}")
+            return False
+
     
     def send_wecom(self, title: str, message: str, image_url: Optional[str] = None):
         """发送企业微信通知"""
