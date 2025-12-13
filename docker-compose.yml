@@ -1,6 +1,6 @@
 services:
   new-emby-stats:
-    image: lsbobo/new-emby-stats:beta
+    image: lsbobo/new-emby-stats:latest
     container_name: new-emby-stats
     ports:
       - "8899:8000"
