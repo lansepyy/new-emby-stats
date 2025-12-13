@@ -17,7 +17,3 @@ services:
       - EMBY_URL=http://your-emby-server:8096
       # Emby API Key（可选，不填则自动从数据库获取）
       - EMBY_API_KEY=
-      # 最小播放时长过滤（秒），低于此时长的记录不计入播放次数，0 或不填表示不过滤
-      # - MIN_PLAY_DURATION=300
-      # 时区偏移（小时），用于 SQLite 查询时间转换，上海为 +8，默认 8
-      # - TZ_OFFSET=8
