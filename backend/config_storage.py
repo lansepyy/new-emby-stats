@@ -8,7 +8,7 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-CONFIG_FILE = "/data/webhook_config.json"
+CONFIG_FILE = "/config/webhook_config.json"
 
 DEFAULT_CONFIG = {
     "telegram": {
