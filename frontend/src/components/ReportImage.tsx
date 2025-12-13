@@ -148,22 +148,24 @@ export const ReportImage = forwardRef<HTMLDivElement, ReportImageProps>(
                   )}
 
                   {/* 内容信息 */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <h3 style={{ 
                       fontSize: '30px', 
                       fontWeight: 'bold', 
-                      marginBottom: '8px',
+                      marginBottom: '10px',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
-                      lineHeight: '1.2'
+                      lineHeight: '1.5',
+                      paddingTop: '2px',
+                      paddingBottom: '2px'
                     }}>
                       {item.name.length > 24 ? item.name.substring(0, 24) + '...' : item.name}
                     </h3>
-                    <p style={{ fontSize: '20px', color: '#9ca3af', marginBottom: '8px', lineHeight: '1.2' }}>
+                    <p style={{ fontSize: '20px', color: '#9ca3af', marginBottom: '10px', lineHeight: '1.5', paddingTop: '2px', paddingBottom: '2px' }}>
                       {item.type === 'Movie' ? '电影' : '剧集'}
                     </p>
-                    <p style={{ fontSize: '20px', color: '#38bdf8', lineHeight: '1.2' }}>
+                    <p style={{ fontSize: '20px', color: '#38bdf8', lineHeight: '1.5', paddingTop: '2px', paddingBottom: '2px' }}>
                       {item.play_count}次播放 · {itemHours}h{itemMinutes}m
                     </p>
                   </div>
