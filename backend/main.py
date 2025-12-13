@@ -14,7 +14,7 @@ from routers.auth import get_current_session
 from services.scheduler import report_scheduler
 
 # 创建应用实例
-app = FastAPI(title="Emby Stats")
+app = FastAPI(title="New Emby Stats")
 
 # 启动定时任务调度器
 @app.on_event("startup")

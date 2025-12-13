@@ -175,7 +175,7 @@ export const ReportImage = forwardRef<HTMLDivElement, ReportImageProps>(
 
         {/* 页脚 */}
         <div style={{ textAlign: 'center', padding: '30px 0', fontSize: '22px', color: '#9ca3af', lineHeight: '1.2' }}>
-          Emby Stats
+          New Emby Stats
         </div>
       </div>
     )

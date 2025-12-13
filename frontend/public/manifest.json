@@ -1,7 +1,7 @@
 {
-  "name": "Emby Stats",
-  "short_name": "Emby Stats",
-  "description": "Emby 播放统计分析",
+  "name": "New Emby Stats",
+  "short_name": "New Emby Stats",
+  "description": "Emby 播放统计分析（基于 emby-stats 项目修改）",
   "start_url": ".",
   "scope": ".",
   "id": "/",

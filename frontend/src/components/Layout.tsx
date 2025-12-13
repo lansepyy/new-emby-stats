@@ -56,8 +56,8 @@ export function Layout({ children, hideChrome = false }: LayoutProps) {
                 <Play className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" />
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-lg font-semibold">Emby Stats</h1>
-                <p className="text-xs text-zinc-500">播放统计分析 v1.85</p>
+                <h1 className="text-lg font-semibold">New Emby Stats</h1>
+                <p className="text-xs text-zinc-500">根据 emby-stats 项目修改</p>
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">

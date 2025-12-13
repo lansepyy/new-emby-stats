@@ -40,7 +40,7 @@ export function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-4">
             <BarChart3 className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold">Emby Stats</h1>
+          <h1 className="text-2xl font-bold">New Emby Stats</h1>
           <p className="text-[var(--color-text-muted)] mt-2">使用 Emby 管理员账号登录</p>
         </div>
 

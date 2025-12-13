@@ -75,7 +75,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
 
   const [filters, setFilters] = useState<FilterState>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('emby-stats-filters')
+      const saved = localStorage.getItem('new-emby-stats-filters')
       if (saved) {
         try {
           return { ...defaultFilters, ...JSON.parse(saved) }
@@ -92,7 +92,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
 
   // 持久化筛选状态
   useEffect(() => {
-    localStorage.setItem('emby-stats-filters', JSON.stringify(filters))
+    localStorage.setItem('new-emby-stats-filters', JSON.stringify(filters))
   }, [filters])
 
   // 加载筛选选项
