@@ -12,6 +12,7 @@
 **Emby 播放统计分析面板 - 可视化你的观影数据**
 
 [Features](#features) • [Quick Start](#quick-start) • [Configuration](#configuration) • [FAQ](#faq) • [开发文档](DEVELOPMENT.md)
+基于原作者qingcheng00624/emby-stats修改
 
 </div>
 
