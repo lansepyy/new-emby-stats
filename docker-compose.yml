@@ -1,7 +1,7 @@
 services:
-  emby-stats:
+  new-emby-stats:
     build: .
-    container_name: emby-stats
+    container_name: new-emby-stats
     restart: unless-stopped
     ports:
       - "8899:8000"
@@ -11,7 +11,7 @@ services:
       - /path/to/emby/data/users.db:/emby-data/users.db:ro
       - /path/to/emby/data/authentication.db:/emby-data/authentication.db:ro
       # Webhook配置目录（可写，用于保存webhook通知配置）
-      - emby-stats-data:/data
+      - new-emby-stats-data:/data
     environment:
       # 时区设置
       - TZ=Asia/Shanghai
@@ -32,4 +32,4 @@ services:
 
 volumes:
   # 数据卷用于持久化webhook配置
-  emby-stats-data:
+  new-emby-stats-data:

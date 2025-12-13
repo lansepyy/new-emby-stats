@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: emby-stats
+  IMAGE_NAME: new-emby-stats
 
 jobs:
   build:
