@@ -232,6 +232,30 @@ export function Notifications() {
         scale: 2,
         logging: false,
         useCORS: true,
+        onclone: (clonedDoc) => {
+          // 移除所有可能使用 oklch 的样式
+          const clonedElement = clonedDoc.querySelector('div')
+          if (clonedElement) {
+            // 强制使用内联样式替换可能的 oklch 颜色
+            clonedElement.querySelectorAll('*').forEach((el) => {
+              const htmlEl = el as HTMLElement
+              const computedStyle = window.getComputedStyle(el)
+              
+              // 替换背景色
+              if (computedStyle.backgroundColor && computedStyle.backgroundColor.includes('oklch')) {
+                htmlEl.style.backgroundColor = computedStyle.backgroundColor
+              }
+              // 替换文字颜色
+              if (computedStyle.color && computedStyle.color.includes('oklch')) {
+                htmlEl.style.color = computedStyle.color
+              }
+              // 替换边框颜色
+              if (computedStyle.borderColor && computedStyle.borderColor.includes('oklch')) {
+                htmlEl.style.borderColor = computedStyle.borderColor
+              }
+            })
+          }
+        }
       })
 
       // 清理
