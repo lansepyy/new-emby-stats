@@ -1,4 +1,4 @@
-# Emby Stats
+# New Emby Stats
 
 <div align="center">
 
