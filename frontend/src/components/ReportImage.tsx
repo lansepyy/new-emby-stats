@@ -47,8 +47,8 @@ export const ReportImage = forwardRef<HTMLDivElement, ReportImageProps>(
       >
         {/* 标题区 */}
         <div style={{ padding: '50px 50px 50px 50px' }}>
-          <h1 style={{ fontSize: '72px', fontWeight: 'bold', marginBottom: '16px', lineHeight: '1.2' }}>{data.title}</h1>
-          <p style={{ fontSize: '36px', color: '#9ca3af', lineHeight: '1.2' }}>{data.period}</p>
+          <h1 style={{ fontSize: '72px', fontWeight: 'bold', marginBottom: '16px', lineHeight: '1.5', paddingTop: '4px', paddingBottom: '4px' }}>{data.title}</h1>
+          <p style={{ fontSize: '36px', color: '#9ca3af', lineHeight: '1.5', paddingTop: '4px', paddingBottom: '4px' }}>{data.period}</p>
         </div>
 
         {/* 统计卡片 */}
@@ -57,31 +57,31 @@ export const ReportImage = forwardRef<HTMLDivElement, ReportImageProps>(
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }}>
               {/* 观看时长 */}
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '52px', fontWeight: 'bold', color: '#38bdf8', marginBottom: '12px', lineHeight: '1.2' }}>
+                <div style={{ fontSize: '52px', fontWeight: 'bold', color: '#38bdf8', marginBottom: '12px', lineHeight: '1.5', paddingTop: '4px', paddingBottom: '4px' }}>
                   {hours}小时{minutes}分
                 </div>
-                <div style={{ fontSize: '20px', color: '#9ca3af', lineHeight: '1.2' }}>观看时长</div>
+                <div style={{ fontSize: '20px', color: '#9ca3af', lineHeight: '1.5', paddingTop: '2px', paddingBottom: '2px' }}>观看时长</div>
               </div>
 
               {/* 播放次数 */}
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '52px', fontWeight: 'bold', color: '#a78bfa', marginBottom: '12px', lineHeight: '1.2' }}>
+                <div style={{ fontSize: '52px', fontWeight: 'bold', color: '#a78bfa', marginBottom: '12px', lineHeight: '1.5', paddingTop: '4px', paddingBottom: '4px' }}>
                   {data.summary.total_plays}次
                 </div>
-                <div style={{ fontSize: '20px', color: '#9ca3af', lineHeight: '1.2' }}>播放次数</div>
+                <div style={{ fontSize: '20px', color: '#9ca3af', lineHeight: '1.5', paddingTop: '2px', paddingBottom: '2px' }}>播放次数</div>
               </div>
 
               {/* 观看内容 */}
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '52px', fontWeight: 'bold', color: '#fbbf24', marginBottom: '12px', lineHeight: '1.2' }}>
+                <div style={{ fontSize: '52px', fontWeight: 'bold', color: '#fbbf24', marginBottom: '12px', lineHeight: '1.5', paddingTop: '4px', paddingBottom: '4px' }}>
                   {data.top_content.length}部
                 </div>
-                <div style={{ fontSize: '20px', color: '#9ca3af', lineHeight: '1.2' }}>观看内容</div>
+                <div style={{ fontSize: '20px', color: '#9ca3af', lineHeight: '1.5', paddingTop: '2px', paddingBottom: '2px' }}>观看内容</div>
               </div>
             </div>
 
             {/* 底部详细 */}
-            <div style={{ textAlign: 'center', fontSize: '22px', color: '#9ca3af', lineHeight: '1.2' }}>
+            <div style={{ textAlign: 'center', fontSize: '22px', color: '#9ca3af', lineHeight: '1.5', paddingTop: '4px', paddingBottom: '4px' }}>
               电影 {movieCount}部 · {Math.floor(movieHours)}h{Math.floor((movieHours % 1) * 60)}m
               {'    '}
               剧集 {episodeCount}集 · {Math.floor(episodeHours)}h{Math.floor((episodeHours % 1) * 60)}m
@@ -91,7 +91,7 @@ export const ReportImage = forwardRef<HTMLDivElement, ReportImageProps>(
 
         {/* 热门内容 */}
         <div style={{ padding: '0 50px 50px 50px' }}>
-          <h2 style={{ fontSize: '42px', fontWeight: 'bold', marginBottom: '35px', lineHeight: '1.2' }}>热门内容</h2>
+          <h2 style={{ fontSize: '42px', fontWeight: 'bold', marginBottom: '35px', lineHeight: '1.5', paddingTop: '4px', paddingBottom: '4px' }}>热门内容</h2>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {data.top_content.slice(0, 5).map((item, index) => {
@@ -119,7 +119,9 @@ export const ReportImage = forwardRef<HTMLDivElement, ReportImageProps>(
                     width: '75px', 
                     textAlign: 'center',
                     flexShrink: 0,
-                    lineHeight: '1.2'
+                    lineHeight: '1.5',
+                    paddingTop: '4px',
+                    paddingBottom: '4px'
                   }}>
                     #{index + 1}
                   </div>
@@ -176,7 +178,7 @@ export const ReportImage = forwardRef<HTMLDivElement, ReportImageProps>(
         </div>
 
         {/* 页脚 */}
-        <div style={{ textAlign: 'center', padding: '30px 0', fontSize: '22px', color: '#9ca3af', lineHeight: '1.2' }}>
+        <div style={{ textAlign: 'center', padding: '30px 0', fontSize: '22px', color: '#9ca3af', lineHeight: '1.5', paddingTop: '4px', paddingBottom: '4px' }}>
           New Emby Stats
         </div>
       </div>
