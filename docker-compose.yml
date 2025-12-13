@@ -1,6 +1,6 @@
 services:
   new-emby-stats:
-    image: lansepyy/new-emby-stats:beta
+    image: lsbobo/new-emby-stats:beta
     container_name: new-emby-stats
     restart: unless-stopped
     ports:
