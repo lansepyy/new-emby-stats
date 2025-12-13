@@ -2,18 +2,19 @@ services:
   new-emby-stats:
     image: lsbobo/new-emby-stats:beta
     container_name: new-emby-stats
-    restart: unless-stopped
     ports:
       - "8899:8000"
     volumes:
-      # Emby数据目录挂载（只读）
+      # 挂载包含 playback_reporting.db 的 data 目录（只读）
       - /path/to/emby/data:/data:ro
-      # 配置目录（可写，用于保存配置和webhook通知设置）
-      - /path/to/config:/config
+      # 配置目录（保存服务器配置、TG推送配置等，必须挂载否则更新容器后配置丢失）
+      - /path/to/new-emby-stats/config:/config
     environment:
-      # 时区设置
-      - TZ=Asia/Shanghai
-      # Emby 服务器地址
+      # Emby 服务器地址（必填）
       - EMBY_URL=http://your-emby-server:8096
       # Emby API Key（可选，不填则自动从数据库获取）
-      - EMBY_API_KEY=
+      - EMBY_API_KEY=your_api_key
+      # 时区
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+
