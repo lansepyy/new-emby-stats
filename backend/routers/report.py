@@ -78,11 +78,11 @@ async def send_report_image(
         sent_count = 0
         
         title_map = {
-            "daily": "每日观影报告",
-            "weekly": "每周观影报告",
-            "monthly": "每月观影报告"
+            "daily": "📊 每日观影报告",
+            "weekly": "📊 本周观影报告",
+            "monthly": "📊 本月观影报告"
         }
-        caption = title_map.get(type, "观影报告")
+        caption = title_map.get(type, "📊 观影报告")
         
         if channels.get("telegram") and tg_config.get("bot_token"):
             try:
