@@ -5,9 +5,11 @@ from apscheduler.triggers.cron import CronTrigger
 from typing import Optional
 from datetime import datetime
 import pytz
+import httpx
 
 from services.report import report_service
 from services.notification import NotificationService
+from services.report_image import ReportImageService
 from config_storage import config_storage
 
 logger = logging.getLogger(__name__)
@@ -123,14 +125,139 @@ class ReportScheduler:
             logger.error(f"发送每月报告失败: {e}")
     
     async def _send_report(self, report: dict):
-        """发送报告到配置的渠道"""
-        report_text = report_service.format_report_text(report)
+        """发送报告到配置的渠道（图片版本）"""
         report_config = config_storage.get_report_config()
         
         # 获取通知配置
         tg_config = config_storage.get_telegram_config()
         wecom_config = config_storage.get_wecom_config()
         discord_config = config_storage.get_discord_config()
+        
+        channels = report_config.get("channels", {"telegram": True})
+        report_title = report.get("title", "观影报告")
+        
+        # 生成报告图片
+        logger.info("开始生成报告图片...")
+        try:
+            # 下载热门内容封面图
+            item_images = await self._download_item_images(report.get('top_content', []))
+            
+            # 生成图片
+            image_service = ReportImageService()
+            image_bytes = image_service.generate_report_image(report, item_images)
+            logger.info(f"报告图片生成成功，大小: {len(image_bytes)} 字节")
+            
+        except Exception as e:
+            logger.error(f"生成报告图片失败: {e}，将发送文本版本")
+            # 如果图片生成失败，回退到文本版本
+            await self._send_text_report(report, tg_config, wecom_config, discord_config, channels)
+            return
+        
+        # 发送图片到各个渠道
+        notification_config = {
+            "telegram": {
+                "token": tg_config.get("bot_token", ""),
+                "admins": tg_config.get("admins", []),
+                "users": tg_config.get("users", []),
+            },
+            "wecom": wecom_config,
+            "discord": discord_config
+        }
+        
+        notification_service = NotificationService(notification_config)
+        sent_count = 0
+        
+        # Telegram
+        if channels.get("telegram") and tg_config.get("bot_token"):
+            try:
+                token = tg_config.get("bot_token")
+                recipients = tg_config.get("admins", []) + tg_config.get("users", [])
+                
+                for chat_id in recipients:
+                    success = await notification_service._send_telegram_photo_bytes(
+                        token, chat_id, image_bytes, report_title
+                    )
+                    if success:
+                        sent_count += 1
+                        logger.info(f"报告图片已通过 Telegram 发送至 {chat_id}")
+            except Exception as e:
+                logger.error(f"Telegram 发送失败: {e}")
+        
+        # 企业微信
+        if channels.get("wecom") and wecom_config.get("corp_id"):
+            try:
+                if notification_service._send_wecom_photo_bytes(image_bytes, report_title):
+                    sent_count += 1
+                    logger.info("报告图片已通过企业微信发送")
+            except Exception as e:
+                logger.error(f"企业微信发送失败: {e}")
+        
+        # Discord
+        if channels.get("discord") and discord_config.get("webhook_url"):
+            try:
+                if notification_service._send_discord_photo_bytes(image_bytes, report_title):
+                    sent_count += 1
+                    logger.info("报告图片已通过 Discord 发送")
+            except Exception as e:
+                logger.error(f"Discord 发送失败: {e}")
+        
+        if sent_count == 0:
+            logger.warning("没有成功发送到任何渠道")
+    
+    async def _download_item_images(self, top_content: list) -> list:
+        """下载热门内容的封面图"""
+        images = []
+        
+        # 从配置获取Emby服务器信息
+        servers = config_storage.get("servers", {})
+        if not servers:
+            logger.warning("未配置Emby服务器，无法下载封面图")
+            return [None] * len(top_content)
+        
+        # 使用第一个服务器
+        server_id = list(servers.keys())[0]
+        server = servers[server_id]
+        emby_url = server.get("url", "")
+        api_key = server.get("api_key", "")
+        
+        if not emby_url or not api_key:
+            logger.warning("Emby服务器配置不完整")
+            return [None] * len(top_content)
+        
+        async with httpx.AsyncClient(timeout=10) as client:
+            for item in top_content[:5]:  # 只下载前5个
+                try:
+                    item_id = item.get("item_id")
+                    if not item_id:
+                        images.append(None)
+                        continue
+                    
+                    # 构建封面URL
+                    image_url = f"{emby_url}/Items/{item_id}/Images/Primary"
+                    params = {
+                        "api_key": api_key,
+                        "maxHeight": 240,
+                        "maxWidth": 180,
+                        "quality": 90
+                    }
+                    
+                    resp = await client.get(image_url, params=params)
+                    if resp.status_code == 200:
+                        images.append(resp.content)
+                        logger.debug(f"已下载封面: {item.get('name')}")
+                    else:
+                        images.append(None)
+                        
+                except Exception as e:
+                    logger.warning(f"下载封面失败: {e}")
+                    images.append(None)
+        
+        return images
+    
+    async def _send_text_report(self, report: dict, tg_config: dict, wecom_config: dict, discord_config: dict, channels: dict):
+        """发送文本版本的报告（备用方案）"""
+        report_text = report_service.format_report_text(report)
+        report_title = report.get("title", "观影报告")
         
         notification_config = {
             "telegram": {
@@ -143,30 +270,25 @@ class ReportScheduler:
         }
         
         notification_service = NotificationService(notification_config)
-        channels = report_config.get("channels", {"telegram": True})
         
-        # 获取报告标题
-        report_title = report.get("title", "观影报告")
-        
-        # 发送到各个渠道
         if channels.get("telegram") and tg_config.get("bot_token"):
             try:
                 await notification_service.send_telegram(report_title, report_text)
-                logger.info("报告已通过 Telegram 发送")
+                logger.info("报告文本已通过 Telegram 发送")
             except Exception as e:
                 logger.error(f"Telegram 发送失败: {e}")
         
         if channels.get("wecom") and wecom_config.get("corp_id"):
             try:
                 await notification_service.send_wecom(report_title, report_text)
-                logger.info("报告已通过企业微信发送")
+                logger.info("报告文本已通过企业微信发送")
             except Exception as e:
                 logger.error(f"企业微信发送失败: {e}")
         
         if channels.get("discord") and discord_config.get("webhook_url"):
             try:
                 await notification_service.send_discord(report_title, report_text)
-                logger.info("报告已通过 Discord 发送")
+                logger.info("报告文本已通过 Discord 发送")
             except Exception as e:
                 logger.error(f"Discord 发送失败: {e}")
 

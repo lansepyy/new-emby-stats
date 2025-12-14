@@ -182,6 +182,30 @@ class NotificationService:
             logger.error(f"Telegram文本发送异常: {str(e)}")
             return False
     
+    async def _send_telegram_photo_bytes(self, token: str, chat_id: str, photo_bytes: bytes, caption: str) -> bool:
+        """发送图片字节数据到Telegram"""
+        try:
+            url = f"https://api.telegram.org/bot{token}/sendPhoto"
+            files = {'photo': ('report.png', photo_bytes, 'image/png')}
+            data = {
+                'chat_id': chat_id,
+                'caption': caption,
+            }
+            
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(url, data=data, files=files)
+            
+            if resp.status_code == 200 and resp.json().get("ok"):
+                logger.info(f"Telegram图片发送成功至 {chat_id}")
+                return True
+            else:
+                logger.error(f"Telegram图片发送失败: {resp.text}")
+                return False
+        
+        except Exception as e:
+            logger.error(f"Telegram图片发送异常: {str(e)}")
+            return False
+    
     def _send_telegram_photo_file_direct(self, token: str, chat_ids: list, photo_bytes: bytes, caption: str):
         """直接发送图片字节到多个chat_id"""
         for chat_id in chat_ids:
