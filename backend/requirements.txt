@@ -10,3 +10,4 @@ APScheduler==3.10.4
 Pillow==10.1.0
 python-multipart==0.0.6
 pytz==2023.3
+playwright==1.40.0

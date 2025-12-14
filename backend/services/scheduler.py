@@ -10,6 +10,7 @@ import httpx
 from services.report import report_service
 from services.notification import NotificationService
 from services.report_image import ReportImageService
+from services.browser_screenshot import browser_screenshot_service, PLAYWRIGHT_AVAILABLE
 from config_storage import config_storage
 
 logger = logging.getLogger(__name__)
@@ -138,14 +139,29 @@ class ReportScheduler:
         
         # 生成报告图片
         logger.info("开始生成报告图片...")
+        image_bytes = None
+        
         try:
-            # 下载热门内容封面图
-            item_images = await self._download_item_images(report.get('top_content', []))
+            # 优先尝试使用浏览器截图（和手动发送一样的高质量）
+            if PLAYWRIGHT_AVAILABLE:
+                logger.info("使用Playwright浏览器截图生成报告...")
+                image_bytes = await browser_screenshot_service.generate_report_screenshot(report)
+                
+                if image_bytes:
+                    logger.info(f"浏览器截图生成成功，大小: {len(image_bytes)} 字节")
+                else:
+                    logger.warning("浏览器截图生成失败，尝试使用PIL生成")
             
-            # 生成图片
-            image_service = ReportImageService()
-            image_bytes = image_service.generate_report_image(report, item_images)
-            logger.info(f"报告图片生成成功，大小: {len(image_bytes)} 字节")
+            # 如果浏览器截图失败或不可用，回退到PIL生成
+            if not image_bytes:
+                logger.info("使用PIL生成报告图片...")
+                # 下载热门内容封面图
+                item_images = await self._download_item_images(report.get('top_content', []))
+                
+                # 生成图片
+                image_service = ReportImageService()
+                image_bytes = image_service.generate_report_image(report, item_images)
+                logger.info(f"PIL图片生成成功，大小: {len(image_bytes)} 字节")
             
         except Exception as e:
             logger.error(f"生成报告图片失败: {e}，将发送文本版本")

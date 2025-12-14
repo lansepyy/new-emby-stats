@@ -15,7 +15,7 @@ class ReportImageService:
     """报告图片生成服务"""
     
     def __init__(self):
-        self.width = 1080  # 增大宽度
+        self.width = 1200  # 增大宽度到1200
         self.bg_color = (26, 32, 44)  # 深色背景
         self.card_color = (45, 55, 72)  # 卡片背景
         self.text_primary = (255, 255, 255)  # 主文字
@@ -54,7 +54,8 @@ class ReportImageService:
         
         # 转换为字节
         output = io.BytesIO()
-        img.save(output, format='PNG', quality=95)
+        # 提高图片质量，使用PNG格式不压缩
+        img.save(output, format='PNG', optimize=False, compress_level=0)
         return output.getvalue()
     
     def _draw_header(self, draw: ImageDraw, report: Dict[str, Any], y: int) -> int:

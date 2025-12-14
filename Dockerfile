@@ -20,9 +20,33 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# 安装系统依赖（Playwright需要）
+RUN apt-get update && apt-get install -y \
+    wget \
+    ca-certificates \
+    fonts-liberation \
+    libnss3 \
+    libxss1 \
+    libappindicator3-1 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libnspr4 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    xdg-utils \
+    && rm -rf /var/lib/apt/lists/*
+
 # 安装依赖
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# 安装Playwright浏览器（仅Chromium）
+RUN playwright install chromium --with-deps || echo "Playwright install failed, will use fallback"
 
 # 复制后端代码
 COPY backend/ .
