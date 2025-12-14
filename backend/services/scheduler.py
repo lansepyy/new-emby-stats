@@ -3,12 +3,17 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from typing import Optional
+from datetime import datetime
+import pytz
 
 from services.report import report_service
 from services.notification import NotificationService
 from config_storage import config_storage
 
 logger = logging.getLogger(__name__)
+
+# 使用中国时区
+TIMEZONE = pytz.timezone('Asia/Shanghai')
 
 
 class ReportScheduler:
@@ -20,7 +25,7 @@ class ReportScheduler:
     def start(self):
         """启动调度器"""
         if self.scheduler is None:
-            self.scheduler = AsyncIOScheduler()
+            self.scheduler = AsyncIOScheduler(timezone=TIMEZONE)
             self._schedule_tasks()
             self.scheduler.start()
             logger.info("报告调度器已启动")
@@ -46,11 +51,11 @@ class ReportScheduler:
             hour, minute = daily_time.split(":")
             self.scheduler.add_job(
                 self._send_daily_report,
-                CronTrigger(hour=int(hour), minute=int(minute)),
+                CronTrigger(hour=int(hour), minute=int(minute), timezone=TIMEZONE),
                 id="daily_report",
                 replace_existing=True
             )
-            logger.info(f"每日报告任务已配置：每天 {daily_time}")
+            logger.info(f"每日报告任务已配置：每天 {daily_time} (Asia/Shanghai)")
         
         # 每周报告
         if report_config.get("weekly_enabled"):
@@ -59,11 +64,11 @@ class ReportScheduler:
             hour, minute = weekly_time.split(":")
             self.scheduler.add_job(
                 self._send_weekly_report,
-                CronTrigger(day_of_week=int(weekly_day), hour=int(hour), minute=int(minute)),
+                CronTrigger(day_of_week=int(weekly_day), hour=int(hour), minute=int(minute), timezone=TIMEZONE),
                 id="weekly_report",
                 replace_existing=True
             )
-            logger.info(f"每周报告任务已配置：每周{['日','一','二','三','四','五','六'][int(weekly_day)]} {weekly_time}")
+            logger.info(f"每周报告任务已配置：每周{['日','一','二','三','四','五','六'][int(weekly_day)]} {weekly_time} (Asia/Shanghai)")
         
         # 每月报告
         if report_config.get("monthly_enabled"):
@@ -72,11 +77,11 @@ class ReportScheduler:
             hour, minute = monthly_time.split(":")
             self.scheduler.add_job(
                 self._send_monthly_report,
-                CronTrigger(day=int(monthly_day), hour=int(hour), minute=int(minute)),
+                CronTrigger(day=int(monthly_day), hour=int(hour), minute=int(minute), timezone=TIMEZONE),
                 id="monthly_report",
                 replace_existing=True
             )
-            logger.info(f"每月报告任务已配置：每月{monthly_day}日 {monthly_time}")
+            logger.info(f"每月报告任务已配置：每月{monthly_day}日 {monthly_time} (Asia/Shanghai)")
     
     def reload_tasks(self):
         """重新加载任务配置"""
