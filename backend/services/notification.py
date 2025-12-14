@@ -2,6 +2,7 @@
 import logging
 from typing import Optional
 import requests
+import httpx
 from jinja2 import Template
 import tempfile
 import os
@@ -20,18 +21,18 @@ class NotificationService:
         self.wecom_config = config.get("wecom", {})
         self.discord_config = config.get("discord", {})
     
-    def send_all(self, title: str, message: str, image_url: Optional[str] = None):
+    async def send_all(self, title: str, message: str, image_url: Optional[str] = None):
         """发送到所有配置的平台"""
         if self.telegram_config.get("token"):
-            self.send_telegram(title, message, image_url)
+            await self.send_telegram(title, message, image_url)
         
         if self.wecom_config.get("corp_id"):
-            self.send_wecom(title, message, image_url)
+            await self.send_wecom(title, message, image_url)
         
         if self.discord_config.get("webhook_url"):
-            self.send_discord(title, message, image_url)
+            await self.send_discord(title, message, image_url)
     
-    def send_telegram(self, title: str, message: str, image_url: Optional[str] = None):
+    async def send_telegram(self, title: str, message: str, image_url: Optional[str] = None):
         """发送Telegram通知"""
         token = self.telegram_config.get("token")
         if not token:
@@ -51,24 +52,24 @@ class NotificationService:
             try:
                 if image_url:
                     # 尝试使用URL直接发送
-                    success = self._send_telegram_photo_url(token, chat_id, image_url, full_message)
+                    success = await self._send_telegram_photo_url(token, chat_id, image_url, full_message)
                     
                     # 如果URL发送失败，尝试下载后上传文件
                     if not success:
                         logger.info(f"URL发送失败，尝试下载图片后上传")
-                        success = self._send_telegram_photo_file(token, chat_id, image_url, full_message)
+                        success = await self._send_telegram_photo_file(token, chat_id, image_url, full_message)
                     
                     # 如果都失败，发送纯文本
                     if not success:
                         logger.warning(f"图片发送失败，改为发送纯文本")
-                        self._send_telegram_text(token, chat_id, full_message)
+                        await self._send_telegram_text(token, chat_id, full_message)
                 else:
-                    self._send_telegram_text(token, chat_id, full_message)
+                    await self._send_telegram_text(token, chat_id, full_message)
             
             except Exception as e:
                 logger.error(f"Telegram通知发送失败: {str(e)}")
     
-    def _send_telegram_photo_url(self, token: str, chat_id: str, photo_url: str, caption: str) -> bool:
+    async def _send_telegram_photo_url(self, token: str, chat_id: str, photo_url: str, caption: str) -> bool:
         """通过URL发送Telegram图片"""
         try:
             url = f"https://api.telegram.org/bot{token}/sendPhoto"
@@ -79,7 +80,8 @@ class NotificationService:
                 "parse_mode": "HTML",
             }
             
-            resp = requests.post(url, data=data, timeout=15)
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(url, data=data, timeout=15)
             
             if resp.status_code == 200 and resp.json().get("ok"):
                 logger.info(f"Telegram图片(URL)发送成功至 {chat_id}")
@@ -92,13 +94,14 @@ class NotificationService:
             logger.warning(f"Telegram URL发送异常: {str(e)}")
             return False
     
-    def _send_telegram_photo_file(self, token: str, chat_id: str, photo_url: str, caption: str) -> bool:
+    async def _send_telegram_photo_file(self, token: str, chat_id: str, photo_url: str, caption: str) -> bool:
         """下载图片后通过文件上传方式发送"""
         temp_file = None
         try:
             # 下载图片
             logger.info(f"开始下载图片: {photo_url}")
-            resp = requests.get(photo_url, timeout=30, stream=True)
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(photo_url, timeout=30)
             
             if resp.status_code != 200:
                 logger.warning(f"图片下载失败: HTTP {resp.status_code}")
@@ -118,9 +121,7 @@ class NotificationService:
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
             
             # 写入图片数据
-            for chunk in resp.iter_content(chunk_size=8192):
-                temp_file.write(chunk)
-            
+            temp_file.write(resp.content)
             temp_file.close()
             
             # 通过文件上传发送
@@ -133,7 +134,8 @@ class NotificationService:
                     'parse_mode': 'HTML'
                 }
                 
-                resp = requests.post(url, data=data, files=files, timeout=30)
+                async with httpx.AsyncClient() as client:
+                    resp = await client.post(url, data=data, files=files, timeout=30)
                 
                 if resp.status_code == 200 and resp.json().get("ok"):
                     logger.info(f"Telegram图片(文件)发送成功至 {chat_id}")
@@ -155,7 +157,7 @@ class NotificationService:
                 except Exception as e:
                     logger.warning(f"临时文件删除失败: {str(e)}")
     
-    def _send_telegram_text(self, token: str, chat_id: str, text: str) -> bool:
+    async def _send_telegram_text(self, token: str, chat_id: str, text: str) -> bool:
         """发送Telegram纯文本消息"""
         try:
             url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -166,7 +168,8 @@ class NotificationService:
                 "disable_web_page_preview": True
             }
             
-            resp = requests.post(url, data=data, timeout=15)
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(url, data=data, timeout=15)
             
             if resp.status_code == 200 and resp.json().get("ok"):
                 logger.info(f"Telegram文本发送成功至 {chat_id}")
@@ -326,7 +329,7 @@ class NotificationService:
             return False
 
     
-    def send_wecom(self, title: str, message: str, image_url: Optional[str] = None):
+    async def send_wecom(self, title: str, message: str, image_url: Optional[str] = None):
         """发送企业微信通知"""
         required_fields = ["corp_id", "secret", "agent_id"]
         if not all(self.wecom_config.get(field) for field in required_fields):
@@ -341,7 +344,8 @@ class NotificationService:
                 "corpsecret": self.wecom_config["secret"]
             }
             
-            token_res = requests.get(token_url, params=params, timeout=10)
+            async with httpx.AsyncClient() as client:
+                token_res = await client.get(token_url, params=params, timeout=10)
             token_data = token_res.json()
             
             if token_data.get("errcode") != 0:
@@ -383,12 +387,13 @@ class NotificationService:
                     }
                 }
             
-            send_res = requests.post(
-                send_url,
-                params={"access_token": access_token},
-                json=data,
-                timeout=10
-            )
+            async with httpx.AsyncClient() as client:
+                send_res = await client.post(
+                    send_url,
+                    params={"access_token": access_token},
+                    json=data,
+                    timeout=10
+                )
             
             if send_res.json().get("errcode") == 0:
                 logger.info("企业微信通知发送成功")
@@ -398,7 +403,7 @@ class NotificationService:
         except Exception as e:
             logger.error(f"企业微信通知异常: {str(e)}")
     
-    def send_discord(self, title: str, message: str, image_url: Optional[str] = None):
+    async def send_discord(self, title: str, message: str, image_url: Optional[str] = None):
         """发送Discord通知"""
         webhook_url = self.discord_config.get("webhook_url")
         if not webhook_url:
@@ -417,7 +422,8 @@ class NotificationService:
                     "color": 0x00ff00
                 }]
             
-            response = requests.post(webhook_url, json=payload, timeout=10)
+            async with httpx.AsyncClient() as client:
+                response = await client.post(webhook_url, json=payload, timeout=10)
             
             if response.status_code == 204:
                 logger.info("Discord通知发送成功")

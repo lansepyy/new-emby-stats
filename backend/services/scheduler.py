@@ -140,24 +140,27 @@ class ReportScheduler:
         notification_service = NotificationService(notification_config)
         channels = report_config.get("channels", {"telegram": True})
         
+        # 获取报告标题
+        report_title = report.get("title", "观影报告")
+        
         # 发送到各个渠道
         if channels.get("telegram") and tg_config.get("bot_token"):
             try:
-                await notification_service.send_telegram_message(report_text)
+                await notification_service.send_telegram(report_title, report_text)
                 logger.info("报告已通过 Telegram 发送")
             except Exception as e:
                 logger.error(f"Telegram 发送失败: {e}")
         
         if channels.get("wecom") and wecom_config.get("corp_id"):
             try:
-                await notification_service.send_wecom_message(report_text)
+                await notification_service.send_wecom(report_title, report_text)
                 logger.info("报告已通过企业微信发送")
             except Exception as e:
                 logger.error(f"企业微信发送失败: {e}")
         
         if channels.get("discord") and discord_config.get("webhook_url"):
             try:
-                await notification_service.send_discord_message(report_text)
+                await notification_service.send_discord(report_title, report_text)
                 logger.info("报告已通过 Discord 发送")
             except Exception as e:
                 logger.error(f"Discord 发送失败: {e}")

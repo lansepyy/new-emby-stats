@@ -100,7 +100,7 @@ async def handle_emby_webhook(request: Request):
         title, message = template_service.render(template_name, context)
         
         # 发送通知
-        notification_service.send_all(title, message, image_url)
+        await notification_service.send_all(title, message, image_url)
         
         return {"status": "success", "event": context.get("event")}
     
@@ -129,7 +129,7 @@ async def test_notification():
         }
         
         notification_service = NotificationService(notification_config)
-        notification_service.send_all(
+        await notification_service.send_all(
             title="🧪 测试通知",
             message="这是一条来自 Emby Stats 的测试通知\n如果您收到此消息，说明通知配置正确！",
             image_url=None
