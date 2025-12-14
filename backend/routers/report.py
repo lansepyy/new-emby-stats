@@ -1,10 +1,12 @@
 """报告推送路由"""
 from fastapi import APIRouter, Query, HTTPException, File, UploadFile, Form
+from fastapi.responses import Response
 from typing import Optional
 import logging
 
 from services.report import report_service
 from services.notification import NotificationService
+from services.browser_screenshot import browser_screenshot_service, PLAYWRIGHT_AVAILABLE
 from config_storage import config_storage
 
 logger = logging.getLogger(__name__)
@@ -141,3 +143,43 @@ async def send_report(type: str = Query(..., regex="^(daily|weekly|monthly)$")):
         "message": "请使用前端生成的图片报告功能"
     }
 
+
+@router.get("/test-screenshot")
+async def test_screenshot():
+    """测试Playwright截图功能"""
+    try:
+        if not PLAYWRIGHT_AVAILABLE:
+            return {
+                "success": False,
+                "message": "Playwright未安装"
+            }
+        
+        # 生成测试报告数据
+        test_report = {
+            "title": "测试报告",
+            "period": "2025-12-14",
+            "summary": {
+                "total_plays": 100,
+                "total_hours": 25.5
+            },
+            "top_content": [
+                {"name": "测试电影1", "type": "Movie", "play_count": 30, "hours": 10.5},
+                {"name": "测试剧集1", "type": "Episode", "play_count": 25, "hours": 8.0},
+                {"name": "测试电影2", "type": "Movie", "play_count": 20, "hours": 4.5},
+                {"name": "测试剧集2", "type": "Episode", "play_count": 15, "hours": 2.0},
+                {"name": "测试电影3", "type": "Movie", "play_count": 10, "hours": 0.5},
+            ]
+        }
+        
+        # 生成截图
+        image_bytes = await browser_screenshot_service.generate_report_screenshot(test_report)
+        
+        if image_bytes:
+            # 返回图片
+            return Response(content=image_bytes, media_type="image/png")
+        else:
+            raise HTTPException(status_code=500, detail="截图生成失败")
+            
+    except Exception as e:
+        logger.error(f"测试截图失败: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
