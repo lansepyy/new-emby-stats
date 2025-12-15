@@ -228,7 +228,7 @@ class ReportScheduler:
         servers = config_storage.get("servers", {})
         if not servers:
             logger.warning("未配置Emby服务器，无法下载封面图")
-            return [None] * len(top_content)
+            return [None] * min(5, len(top_content))
         
         # 使用第一个服务器
         server_id = list(servers.keys())[0]
@@ -237,37 +237,46 @@ class ReportScheduler:
         api_key = server.get("api_key", "")
         
         if not emby_url or not api_key:
-            logger.warning("Emby服务器配置不完整")
-            return [None] * len(top_content)
+            logger.warning("Emby服务器配置不完整，无法下载封面图")
+            return [None] * min(5, len(top_content))
+        
+        # 确保 URL 格式正确
+        emby_url = emby_url.rstrip('/')
+        logger.info(f"开始下载封面图，Emby服务器: {emby_url}")
         
         async with httpx.AsyncClient(timeout=10) as client:
-            for item in top_content[:5]:  # 只下载前5个
+            for idx, item in enumerate(top_content[:5]):  # 只下载前5个
                 try:
                     item_id = item.get("item_id")
+                    item_name = item.get("name", "未知")
+                    
                     if not item_id:
+                        logger.warning(f"#{idx+1} {item_name} 缺少 item_id")
                         images.append(None)
                         continue
                     
-                    # 构建封面URL
+                    # 构建封面URL - 使用更大尺寸以匹配优化后的显示
                     image_url = f"{emby_url}/Items/{item_id}/Images/Primary"
                     params = {
                         "api_key": api_key,
-                        "maxHeight": 240,
-                        "maxWidth": 180,
-                        "quality": 90
+                        "maxHeight": 310,  # 增大到 155*2 以获得更高质量
+                        "maxWidth": 220,   # 增大到 110*2
+                        "quality": 95      # 提高质量
                     }
                     
                     resp = await client.get(image_url, params=params)
                     if resp.status_code == 200:
                         images.append(resp.content)
-                        logger.debug(f"已下载封面: {item.get('name')}")
+                        logger.debug(f"已下载封面: {item.get('name')}, 大小: {len(resp.content)} bytes")
                     else:
+                        logger.warning(f"下载封面失败: {item.get('name')}, HTTP {resp.status_code}")
                         images.append(None)
                         
                 except Exception as e:
-                    logger.warning(f"下载封面失败: {e}")
+                    logger.error(f"#{idx+1} {item_name} 下载封面失败: {e}")
                     images.append(None)
         
+        logger.info(f"封面下载完成：成功 {sum(1 for img in images if img is not None)}/{len(images)}")
         return images
     
     async def _send_text_report(self, report: dict, tg_config: dict, wecom_config: dict, discord_config: dict, channels: dict):
