@@ -21,7 +21,7 @@ class ReportService:
         return await self._generate_report(
             start_date=yesterday,
             end_date=yesterday,
-            title="每日观影报告",
+            title="📊 每日观影报告",
             period=f"{yesterday}"
         )
     
@@ -33,7 +33,7 @@ class ReportService:
         return await self._generate_report(
             start_date=start_date,
             end_date=end_date,
-            title="每周观影报告",
+            title="📊 每周观影报告",
             period=f"{start_date} 至 {end_date}"
         )
     
@@ -45,7 +45,7 @@ class ReportService:
         return await self._generate_report(
             start_date=start_date,
             end_date=end_date,
-            title="每月观影报告",
+            title="📊 每月观影报告",
             period=f"{start_date} 至 {end_date}"
         )
     
