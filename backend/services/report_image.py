@@ -47,10 +47,21 @@ class ReportImageService:
                 # 使用第一个服务器
                 server_id = list(servers.keys())[0]
                 server = servers[server_id]
-                # 配置键名是 emby_url 和 emby_api_key（带下划线）
-                self.emby_url = server.get("emby_url", "").rstrip("/")
-                self.emby_api_key = server.get("emby_api_key", "")
-                logger.info(f"加载 Emby 配置: URL={self.emby_url}, Server ID={server_id}")
+                
+                # 兼容多种键名: emby_url/url, emby_api_key/api_key
+                self.emby_url = (
+                    server.get("emby_url") or 
+                    server.get("url") or 
+                    ""
+                ).rstrip("/")
+                
+                self.emby_api_key = (
+                    server.get("emby_api_key") or 
+                    server.get("api_key") or 
+                    ""
+                )
+                
+                logger.info(f"加载 Emby 配置: URL={self.emby_url}, API_KEY={'已设置' if self.emby_api_key else '未设置'}, Server={server}")
             else:
                 logger.warning("未配置 Emby 服务器")
         except Exception as e:
