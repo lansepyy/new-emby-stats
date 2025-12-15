@@ -20,7 +20,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 安装系统依赖（Playwright需要）
+# 安装系统依赖（Playwright需要）+ 中文字体
 RUN apt-get update && apt-get install -y \
     wget \
     ca-certificates \
@@ -39,6 +39,8 @@ RUN apt-get update && apt-get install -y \
     libxdamage1 \
     libxrandr2 \
     xdg-utils \
+    fonts-wqy-microhei \
+    fonts-wqy-zenhei \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装依赖
