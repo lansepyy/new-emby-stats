@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Modal } from '@/components/ui'
+import { Card } from '@/components/ui'
 import { Settings, Bell, MessageSquare, Film, Save, TestTube, Eye, X } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import { ReportImage } from '@/components/ReportImage'
@@ -926,10 +926,9 @@ export function Notifications() {
           </div>
         </div>
       </Card>
-    </div>
 
-    {/* 报告预览弹窗 */}
-    {showPreview && (
+      {/* 报告预览弹窗 */}
+      {showPreview && (
       <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowPreview(false)}>
         <div className="bg-surface rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
           {/* 头部 */}
@@ -999,7 +998,7 @@ export function Notifications() {
           </div>
         </div>
       </div>
-    )}
-  </div>
+      )}
+    </div>
   )
 }
