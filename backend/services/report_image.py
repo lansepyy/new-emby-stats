@@ -41,10 +41,17 @@ class ReportImageService:
     def _load_emby_config(self):
         """加载 Emby 服务器配置"""
         try:
-            config = config_storage.get_config()
-            self.emby_url = config.get("emby_url", "").rstrip("/")
-            self.emby_api_key = config.get("emby_api_key", "")
-            logger.info(f"加载 Emby 配置: URL={self.emby_url}")
+            # Emby 服务器配置存储在 servers 字典中
+            servers = config_storage.get("servers", {})
+            if servers:
+                # 使用第一个服务器
+                server_id = list(servers.keys())[0]
+                server = servers[server_id]
+                self.emby_url = server.get("url", "").rstrip("/")
+                self.emby_api_key = server.get("api_key", "")
+                logger.info(f"加载 Emby 配置: URL={self.emby_url}, Server ID={server_id}")
+            else:
+                logger.warning("未配置 Emby 服务器")
         except Exception as e:
             logger.error(f"加载 Emby 配置失败: {e}")
     
