@@ -5,7 +5,7 @@ import html2canvas from 'html2canvas'
 import { ReportImage } from '@/components/ReportImage'
 
 export function Notifications() {
-  const [activeSection, setActiveSection] = useState<'telegram' | 'wecom' | 'discord' | 'tmdb' | 'report'>('telegram')
+  const [activeSection, setActiveSection] = useState<'telegram' | 'wecom' | 'discord' | 'onebot' | 'tmdb' | 'report'>('telegram')
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isTesting, setIsTesting] = useState(false)
@@ -56,6 +56,14 @@ export function Notifications() {
     avatarUrl: '',
   })
 
+  // OneBot配置
+  const [onebotConfig, setOnebotConfig] = useState({
+    httpUrl: '',
+    accessToken: '',
+    groupIds: '',
+    userIds: '',
+  })
+
   // TMDB配置
   const [tmdbConfig, setTmdbConfig] = useState({
     apiKey: '',
@@ -77,6 +85,7 @@ export function Notifications() {
       telegram: true,
       wecom: false,
       discord: false,
+      onebot: false,
     }
   })
 
@@ -112,6 +121,13 @@ export function Notifications() {
         avatarUrl: data.discord.avatar_url || '',
       })
       
+      setOnebotConfig({
+        httpUrl: data.onebot?.http_url || '',
+        accessToken: data.onebot?.access_token || '',
+        groupIds: data.onebot?.group_ids?.join(',') || '',
+        userIds: data.onebot?.user_ids?.join(',') || '',
+      })
+      
       setTmdbConfig({
         apiKey: data.tmdb.api_key || '',
         imageBaseUrl: data.tmdb.image_base_url || 'https://image.tmdb.org/t/p/original',
@@ -131,6 +147,7 @@ export function Notifications() {
           telegram: data.report?.channels?.telegram !== false,
           wecom: data.report?.channels?.wecom || false,
           discord: data.report?.channels?.discord || false,
+          onebot: data.report?.channels?.onebot || false,
         }
       })
     } catch (error) {
@@ -160,6 +177,12 @@ export function Notifications() {
           webhook_url: discordConfig.webhookUrl,
           username: discordConfig.username,
           avatar_url: discordConfig.avatarUrl,
+        },
+        onebot: {
+          http_url: onebotConfig.httpUrl,
+          access_token: onebotConfig.accessToken,
+          group_ids: onebotConfig.groupIds ? onebotConfig.groupIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [],
+          user_ids: onebotConfig.userIds ? onebotConfig.userIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [],
         },
         tmdb: {
           api_key: tmdbConfig.apiKey,
@@ -381,6 +404,7 @@ export function Notifications() {
     { id: 'telegram', label: 'Telegram', icon: MessageSquare },
     { id: 'wecom', label: '企业微信', icon: Bell },
     { id: 'discord', label: 'Discord', icon: MessageSquare },
+    { id: 'onebot', label: 'OneBot', icon: MessageSquare },
     { id: 'tmdb', label: 'TMDB', icon: Film },
     { id: 'report', label: '观影报告', icon: Settings },
   ] as const
@@ -608,6 +632,68 @@ export function Notifications() {
             </div>
           )}
 
+          {activeSection === 'onebot' && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold mb-4">OneBot 配置</h3>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">HTTP API 地址</label>
+                <input
+                  type="text"
+                  value={onebotConfig.httpUrl}
+                  onChange={e => setOnebotConfig({ ...onebotConfig, httpUrl: e.target.value })}
+                  placeholder="http://localhost:5700"
+                  className="w-full px-4 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs text-text-secondary mt-1">
+                  OneBot 实现（如 go-cqhttp、LLOneBot 等）的 HTTP API 地址
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Access Token（可选）</label>
+                <input
+                  type="password"
+                  value={onebotConfig.accessToken}
+                  onChange={e => setOnebotConfig({ ...onebotConfig, accessToken: e.target.value })}
+                  placeholder="your_access_token"
+                  className="w-full px-4 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs text-text-secondary mt-1">
+                  如果 OneBot 实现配置了 access_token，请填写
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">群组 ID（可选）</label>
+                <input
+                  type="text"
+                  value={onebotConfig.groupIds}
+                  onChange={e => setOnebotConfig({ ...onebotConfig, groupIds: e.target.value })}
+                  placeholder="123456789,987654321"
+                  className="w-full px-4 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs text-text-secondary mt-1">
+                  发送到的 QQ 群号，多个用逗号分隔
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">用户 ID（可选）</label>
+                <input
+                  type="text"
+                  value={onebotConfig.userIds}
+                  onChange={e => setOnebotConfig({ ...onebotConfig, userIds: e.target.value })}
+                  placeholder="123456789,987654321"
+                  className="w-full px-4 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs text-text-secondary mt-1">
+                  发送到的 QQ 用户号（私聊），多个用逗号分隔
+                </p>
+              </div>
+            </div>
+          )}
+
           {activeSection === 'tmdb' && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold mb-4">TMDB 配置</h3>
@@ -707,6 +793,18 @@ export function Notifications() {
                       className="w-5 h-5 text-primary bg-surface border-border rounded focus:ring-primary cursor-pointer"
                     />
                     <span className="flex-1">Discord</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer p-2 -m-2 rounded-lg hover:bg-content2 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={reportConfig.channels.onebot}
+                      onChange={e => setReportConfig({
+                        ...reportConfig,
+                        channels: { ...reportConfig.channels, onebot: e.target.checked }
+                      })}
+                      className="w-5 h-5 text-primary bg-surface border-border rounded focus:ring-primary cursor-pointer"
+                    />
+                    <span className="flex-1">OneBot</span>
                   </label>
                 </div>
               </div>

@@ -31,6 +31,13 @@ class DiscordConfig(BaseModel):
     avatar_url: str = ""
 
 
+class OneBotConfig(BaseModel):
+    http_url: str = ""
+    access_token: str = ""
+    group_ids: List[int] = []
+    user_ids: List[int] = []
+
+
 class TMDBConfig(BaseModel):
     api_key: str = ""
     image_base_url: str = "https://image.tmdb.org/t/p/original"
@@ -40,6 +47,7 @@ class ReportChannels(BaseModel):
     telegram: bool = True
     wecom: bool = False
     discord: bool = False
+    onebot: bool = False
 
 
 class ReportConfig(BaseModel):
@@ -59,6 +67,7 @@ class NotificationConfig(BaseModel):
     telegram: TelegramConfig = TelegramConfig()
     wecom: WecomConfig = WecomConfig()
     discord: DiscordConfig = DiscordConfig()
+    onebot: OneBotConfig = OneBotConfig()
     tmdb: TMDBConfig = TMDBConfig()
     report: ReportConfig = ReportConfig()
 
@@ -74,6 +83,7 @@ async def get_notification_config() -> NotificationConfig:
         tg_config = config_storage.get_telegram_config()
         wecom_config = config_storage.get_wecom_config()
         discord_config = config_storage.get_discord_config()
+        onebot_config = config_storage.get("onebot", {})
         tmdb_config = config_storage.get_tmdb_config()
         report_config = config_storage.get_report_config()
         
@@ -81,6 +91,7 @@ async def get_notification_config() -> NotificationConfig:
             telegram=TelegramConfig(**tg_config),
             wecom=WecomConfig(**wecom_config),
             discord=DiscordConfig(**discord_config),
+            onebot=OneBotConfig(**onebot_config),
             tmdb=TMDBConfig(**tmdb_config),
             report=ReportConfig(**report_config)
         )
@@ -96,6 +107,7 @@ async def save_notification_config(config: NotificationConfig):
         config_storage.update_section("telegram", config.telegram.dict())
         config_storage.update_section("wecom", config.wecom.dict())
         config_storage.update_section("discord", config.discord.dict())
+        config_storage.update_section("onebot", config.onebot.dict())
         config_storage.update_section("tmdb", config.tmdb.dict())
         config_storage.update_section("report", config.report.dict())
         

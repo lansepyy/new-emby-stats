@@ -20,6 +20,7 @@ class NotificationService:
         self.telegram_config = config.get("telegram", {})
         self.wecom_config = config.get("wecom", {})
         self.discord_config = config.get("discord", {})
+        self.onebot_config = config.get("onebot", {})
     
     async def send_all(self, title: str, message: str, image_url: Optional[str] = None):
         """发送到所有配置的平台"""
@@ -31,6 +32,9 @@ class NotificationService:
         
         if self.discord_config.get("webhook_url"):
             await self.send_discord(title, message, image_url)
+        
+        if self.onebot_config.get("http_url"):
+            await self.send_onebot(title, message, image_url)
     
     async def send_telegram(self, title: str, message: str, image_url: Optional[str] = None):
         """发送Telegram通知"""
@@ -456,6 +460,178 @@ class NotificationService:
         
         except Exception as e:
             logger.error(f"Discord通知异常: {str(e)}")
+    
+    async def send_onebot(self, title: str, message: str, image_url: Optional[str] = None):
+        """发送OneBot通知（QQ机器人）"""
+        http_url = self.onebot_config.get("http_url")
+        if not http_url:
+            return
+        
+        access_token = self.onebot_config.get("access_token", "")
+        group_ids = self.onebot_config.get("group_ids", [])
+        user_ids = self.onebot_config.get("user_ids", [])
+        
+        if not group_ids and not user_ids:
+            logger.warning("OneBot未配置接收者")
+            return
+        
+        try:
+            headers = {}
+            if access_token:
+                headers["Authorization"] = f"Bearer {access_token}"
+            
+            # 构建消息内容
+            full_message = f"{title}\n{message}"
+            
+            async with httpx.AsyncClient() as client:
+                # 发送到群组
+                for group_id in group_ids:
+                    try:
+                        if image_url:
+                            # 发送图片
+                            data = {
+                                "group_id": group_id,
+                                "message": [
+                                    {"type": "text", "data": {"text": full_message}},
+                                    {"type": "image", "data": {"file": image_url}}
+                                ]
+                            }
+                        else:
+                            data = {
+                                "group_id": group_id,
+                                "message": full_message
+                            }
+                        
+                        resp = await client.post(
+                            f"{http_url}/send_group_msg",
+                            json=data,
+                            headers=headers,
+                            timeout=15
+                        )
+                        
+                        if resp.status_code == 200:
+                            logger.info(f"OneBot群消息发送成功至群 {group_id}")
+                        else:
+                            logger.error(f"OneBot群消息发送失败: {resp.text}")
+                    
+                    except Exception as e:
+                        logger.error(f"OneBot群消息发送异常: {str(e)}")
+                
+                # 发送到私聊
+                for user_id in user_ids:
+                    try:
+                        if image_url:
+                            data = {
+                                "user_id": user_id,
+                                "message": [
+                                    {"type": "text", "data": {"text": full_message}},
+                                    {"type": "image", "data": {"file": image_url}}
+                                ]
+                            }
+                        else:
+                            data = {
+                                "user_id": user_id,
+                                "message": full_message
+                            }
+                        
+                        resp = await client.post(
+                            f"{http_url}/send_private_msg",
+                            json=data,
+                            headers=headers,
+                            timeout=15
+                        )
+                        
+                        if resp.status_code == 200:
+                            logger.info(f"OneBot私聊消息发送成功至用户 {user_id}")
+                        else:
+                            logger.error(f"OneBot私聊消息发送失败: {resp.text}")
+                    
+                    except Exception as e:
+                        logger.error(f"OneBot私聊消息发送异常: {str(e)}")
+        
+        except Exception as e:
+            logger.error(f"OneBot通知异常: {str(e)}")
+    
+    def _send_onebot_photo_bytes(self, photo_bytes: bytes, caption: str):
+        """发送OneBot图片（从字节）"""
+        http_url = self.onebot_config.get("http_url")
+        if not http_url:
+            logger.warning("OneBot HTTP URL未配置，跳过发送")
+            return False
+        
+        access_token = self.onebot_config.get("access_token", "")
+        group_ids = self.onebot_config.get("group_ids", [])
+        user_ids = self.onebot_config.get("user_ids", [])
+        
+        try:
+            headers = {}
+            if access_token:
+                headers["Authorization"] = f"Bearer {access_token}"
+            
+            # 将图片转为base64
+            import base64
+            image_base64 = base64.b64encode(photo_bytes).decode('utf-8')
+            
+            # 发送到群组
+            for group_id in group_ids:
+                try:
+                    data = {
+                        "group_id": group_id,
+                        "message": [
+                            {"type": "text", "data": {"text": caption}} if caption else None,
+                            {"type": "image", "data": {"file": f"base64://{image_base64}"}}
+                        ]
+                    }
+                    # 移除 None 项
+                    data["message"] = [m for m in data["message"] if m]
+                    
+                    resp = requests.post(
+                        f"{http_url}/send_group_msg",
+                        json=data,
+                        headers=headers,
+                        timeout=30
+                    )
+                    
+                    if resp.status_code == 200:
+                        logger.info(f"OneBot群图片发送成功至群 {group_id}")
+                    else:
+                        logger.error(f"OneBot群图片发送失败: {resp.text}")
+                
+                except Exception as e:
+                    logger.error(f"OneBot群图片发送异常: {str(e)}")
+            
+            # 发送到私聊
+            for user_id in user_ids:
+                try:
+                    data = {
+                        "user_id": user_id,
+                        "message": [
+                            {"type": "text", "data": {"text": caption}} if caption else None,
+                            {"type": "image", "data": {"file": f"base64://{image_base64}"}}
+                        ]
+                    }
+                    data["message"] = [m for m in data["message"] if m]
+                    
+                    resp = requests.post(
+                        f"{http_url}/send_private_msg",
+                        json=data,
+                        headers=headers,
+                        timeout=30
+                    )
+                    
+                    if resp.status_code == 200:
+                        logger.info(f"OneBot私聊图片发送成功至用户 {user_id}")
+                    else:
+                        logger.error(f"OneBot私聊图片发送失败: {resp.text}")
+                
+                except Exception as e:
+                    logger.error(f"OneBot私聊图片发送异常: {str(e)}")
+            
+            return True
+        
+        except Exception as e:
+            logger.error(f"OneBot图片发送异常: {str(e)}")
+            return False
 
 
 class NotificationTemplateService:

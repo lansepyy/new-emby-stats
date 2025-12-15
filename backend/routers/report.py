@@ -61,6 +61,7 @@ async def send_report_image(
         tg_config = config_storage.get_telegram_config()
         wecom_config = config_storage.get_wecom_config()
         discord_config = config_storage.get_discord_config()
+        onebot_config = config_storage.get("onebot", {})
         
         notification_config = {
             "telegram": {
@@ -69,7 +70,8 @@ async def send_report_image(
                 "users": tg_config.get("users", []),
             },
             "wecom": wecom_config,
-            "discord": discord_config
+            "discord": discord_config,
+            "onebot": onebot_config
         }
         
         # 初始化通知服务
@@ -114,6 +116,14 @@ async def send_report_image(
                     logger.info("报告图片已通过 Discord 发送")
             except Exception as e:
                 logger.error(f"Discord 发送失败: {e}")
+        
+        if channels.get("onebot") and onebot_config.get("http_url"):
+            try:
+                if notification_service._send_onebot_photo_bytes(image_bytes, caption):
+                    sent_count += 1
+                    logger.info("报告图片已通过 OneBot 发送")
+            except Exception as e:
+                logger.error(f"OneBot 发送失败: {e}")
 
         
         if sent_count == 0:
