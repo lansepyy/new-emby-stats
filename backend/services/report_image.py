@@ -11,6 +11,8 @@ from PIL import Image, ImageDraw, ImageFont
 import requests
 from pathlib import Path
 
+from config_storage import config_storage
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,6 +32,60 @@ class ReportImageService:
         
         # 资源路径
         self.res_dir = Path(__file__).parent.parent.parent / "res"
+        
+        # Emby 服务器配置（用于实时获取封面）
+        self.emby_url = None
+        self.emby_api_key = None
+        self._load_emby_config()
+    
+    def _load_emby_config(self):
+        """加载 Emby 服务器配置"""
+        try:
+            config = config_storage.get_config()
+            self.emby_url = config.get("emby_url", "").rstrip("/")
+            self.emby_api_key = config.get("emby_api_key", "")
+            logger.info(f"加载 Emby 配置: URL={self.emby_url}")
+        except Exception as e:
+            logger.error(f"加载 Emby 配置失败: {e}")
+    
+    def _fetch_cover_image(self, item_id: str, width: int = 220, height: int = 310, quality: int = 90) -> Optional[bytes]:
+        """实时获取封面图片（参考 MP 插件 primary 方法）
+        
+        Args:
+            item_id: 项目 ID
+            width: 最大宽度
+            height: 最大高度
+            quality: 图片质量 (1-100)
+            
+        Returns:
+            图片字节数据，失败返回 None
+        """
+        if not self.emby_url or not self.emby_api_key or not item_id:
+            logger.warning(f"封面获取条件不足: URL={self.emby_url}, API_KEY={'已设置' if self.emby_api_key else '未设置'}, item_id={item_id}")
+            return None
+        
+        try:
+            url = f"{self.emby_url}/Items/{item_id}/Images/Primary"
+            params = {
+                "maxWidth": width,
+                "maxHeight": height,
+                "quality": quality,
+                "api_key": self.emby_api_key
+            }
+            
+            logger.info(f"正在获取封面: {url} (item_id={item_id})")
+            response = requests.get(url, params=params, timeout=10)
+            
+            if response.status_code == 200:
+                logger.info(f"封面获取成功: {len(response.content)} bytes")
+                return response.content
+            else:
+                logger.warning(f"封面获取失败: HTTP {response.status_code}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"封面获取异常: {e}")
+            return None
         
     def generate_report_image(self, report: Dict[str, Any], item_images: List[Optional[bytes]] = None) -> bytes:
         """生成报告图片 - 竖版精美设计
@@ -243,7 +299,7 @@ class ReportImageService:
         return y
     
     def _draw_content_item(self, draw: ImageDraw, img: Image, y: int, index: int, item: Dict[str, Any], cover_image: Optional[bytes]) -> int:
-        """绘制单个内容项 - 参考 MP 和前端样式，增大封面"""
+        """绘制单个内容项 - 参考 MP 插件实时获取封面"""
         card_padding = 50
         item_height = 170  # 增加高度以容纳更大的封面
         
@@ -266,21 +322,29 @@ class ReportImageService:
         
         x_offset += 85
         
-        # 封面图 - 增大尺寸 (参考 MP: 108x159)
+        # 封面图 - 实时获取（参考 MP 插件）
         cover_width, cover_height = 110, 155
-        if cover_image:
+        item_id = item.get('item_id')
+        
+        # 实时获取封面图片
+        logger.info(f"准备获取封面: item_id={item_id}, name={item.get('name')}")
+        cover_bytes = self._fetch_cover_image(item_id, width=220, height=310) if item_id else None
+        
+        if cover_bytes:
             try:
-                cover = Image.open(io.BytesIO(cover_image))
+                cover = Image.open(io.BytesIO(cover_bytes))
                 # 调整封面大小为固定尺寸
                 cover = cover.resize((cover_width, cover_height), Image.Resampling.LANCZOS)
                 # 添加圆角
                 cover = self._add_rounded_corners(cover, 8)
                 # 粘贴到主图
                 img.paste(cover, (x_offset, y + 8), cover if cover.mode == 'RGBA' else None)
+                logger.info(f"封面绘制成功: {item.get('name')}")
             except Exception as e:
                 logger.warning(f"封面图加载失败: {e}")
                 self._draw_placeholder_cover(draw, x_offset, y + 8, cover_width, cover_height)
         else:
+            logger.warning(f"封面获取失败，使用占位符: {item.get('name')}")
             self._draw_placeholder_cover(draw, x_offset, y + 8, cover_width, cover_height)
         
         x_offset += cover_width + 25

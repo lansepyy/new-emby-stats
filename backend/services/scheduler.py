@@ -154,13 +154,11 @@ class ReportScheduler:
             
             # 如果浏览器截图失败或不可用，回退到PIL生成
             if not image_bytes:
-                logger.info("使用PIL生成报告图片...")
-                # 下载热门内容封面图
-                item_images = await self._download_item_images(report.get('top_content', []))
+                logger.info("使用PIL生成报告图片（实时获取封面）...")
                 
-                # 生成图片
+                # 生成图片（封面将在绘制时实时获取）
                 image_service = ReportImageService()
-                image_bytes = image_service.generate_report_image(report, item_images)
+                image_bytes = image_service.generate_report_image(report)
                 logger.info(f"PIL图片生成成功，大小: {len(image_bytes)} 字节")
             
         except Exception as e:
@@ -219,65 +217,6 @@ class ReportScheduler:
         
         if sent_count == 0:
             logger.warning("没有成功发送到任何渠道")
-    
-    async def _download_item_images(self, top_content: list) -> list:
-        """下载热门内容的封面图"""
-        images = []
-        
-        # 从配置获取Emby服务器信息
-        servers = config_storage.get("servers", {})
-        if not servers:
-            logger.warning("未配置Emby服务器，无法下载封面图")
-            return [None] * min(5, len(top_content))
-        
-        # 使用第一个服务器
-        server_id = list(servers.keys())[0]
-        server = servers[server_id]
-        emby_url = server.get("url", "")
-        api_key = server.get("api_key", "")
-        
-        if not emby_url or not api_key:
-            logger.warning("Emby服务器配置不完整，无法下载封面图")
-            return [None] * min(5, len(top_content))
-        
-        # 确保 URL 格式正确
-        emby_url = emby_url.rstrip('/')
-        logger.info(f"开始下载封面图，Emby服务器: {emby_url}")
-        
-        async with httpx.AsyncClient(timeout=10) as client:
-            for idx, item in enumerate(top_content[:5]):  # 只下载前5个
-                try:
-                    item_id = item.get("item_id")
-                    item_name = item.get("name", "未知")
-                    
-                    if not item_id:
-                        logger.warning(f"#{idx+1} {item_name} 缺少 item_id")
-                        images.append(None)
-                        continue
-                    
-                    # 构建封面URL - 使用更大尺寸以匹配优化后的显示
-                    image_url = f"{emby_url}/Items/{item_id}/Images/Primary"
-                    params = {
-                        "api_key": api_key,
-                        "maxHeight": 310,  # 增大到 155*2 以获得更高质量
-                        "maxWidth": 220,   # 增大到 110*2
-                        "quality": 95      # 提高质量
-                    }
-                    
-                    resp = await client.get(image_url, params=params)
-                    if resp.status_code == 200:
-                        images.append(resp.content)
-                        logger.debug(f"已下载封面: {item.get('name')}, 大小: {len(resp.content)} bytes")
-                    else:
-                        logger.warning(f"下载封面失败: {item.get('name')}, HTTP {resp.status_code}")
-                        images.append(None)
-                        
-                except Exception as e:
-                    logger.error(f"#{idx+1} {item_name} 下载封面失败: {e}")
-                    images.append(None)
-        
-        logger.info(f"封面下载完成：成功 {sum(1 for img in images if img is not None)}/{len(images)}")
-        return images
     
     async def _send_text_report(self, report: dict, tg_config: dict, wecom_config: dict, discord_config: dict, channels: dict):
         """发送文本版本的报告（备用方案）"""
