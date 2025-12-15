@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Card } from '@/components/ui'
-import { Settings, Bell, MessageSquare, Film, Save, TestTube } from 'lucide-react'
+import { Card, Modal } from '@/components/ui'
+import { Settings, Bell, MessageSquare, Film, Save, TestTube, Eye, X } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import { ReportImage } from '@/components/ReportImage'
 
@@ -12,6 +12,12 @@ export function Notifications() {
   const [testMessage, setTestMessage] = useState('')
   const [isSendingReport, setIsSendingReport] = useState(false)
   const [reportMessage, setReportMessage] = useState('')
+  
+  // 报告预览
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const [previewType, setPreviewType] = useState<'daily' | 'weekly' | 'monthly'>('daily')
 
   // Telegram配置
   const [telegramConfig, setTelegramConfig] = useState({
@@ -286,6 +292,78 @@ export function Notifications() {
       setReportMessage('❌ 发送失败：' + (error as Error).message)
     } finally {
       setIsSendingReport(false)
+    }
+  }
+
+  // 生成报告预览
+  const handlePreviewReport = async (type: 'daily' | 'weekly' | 'monthly') => {
+    setPreviewType(type)
+    setShowPreview(true)
+    setPreviewLoading(true)
+    setPreviewImage(null)
+
+    try {
+      // 1. 获取报告数据
+      const response = await fetch(`/api/report/generate?type=${type}`)
+      if (!response.ok) throw new Error('获取报告数据失败')
+      
+      const reportData = await response.json()
+
+      // 2. 获取封面图
+      const coverImages: Record<string, string> = {}
+      for (const item of reportData.top_content.slice(0, 5)) {
+        if (item.item_id) {
+          try {
+            const imgResponse = await fetch(`/api/poster/${item.item_id}?maxHeight=155&maxWidth=110`)
+            if (imgResponse.ok) {
+              const blob = await imgResponse.blob()
+              coverImages[item.item_id] = URL.createObjectURL(blob)
+            }
+          } catch (e) {
+            console.warn(`封面获取失败: ${item.name}`, e)
+          }
+        }
+      }
+
+      // 3. 渲染报告组件并生成图片
+      const reportElement = document.createElement('div')
+      reportElement.style.position = 'absolute'
+      reportElement.style.left = '-9999px'
+      document.body.appendChild(reportElement)
+
+      const { createRoot } = await import('react-dom/client')
+      const root = createRoot(reportElement)
+      
+      await new Promise<void>((resolve) => {
+        root.render(
+          <ReportImage data={reportData} coverImages={coverImages} />
+        )
+        setTimeout(resolve, 500) // 等待渲染完成
+      })
+
+      const canvas = await html2canvas(reportElement.querySelector('div')!, {
+        backgroundColor: '#1a202c',
+        scale: 2,
+        logging: false,
+        useCORS: true,
+      })
+
+      // 清理
+      root.unmount()
+      document.body.removeChild(reportElement)
+      
+      // 转换为图片URL
+      const imageUrl = canvas.toDataURL('image/png', 0.95)
+      setPreviewImage(imageUrl)
+      
+      // 清理 blob URLs
+      Object.values(coverImages).forEach(url => URL.revokeObjectURL(url))
+    } catch (error) {
+      console.error('预览失败:', error)
+      alert('生成预览失败：' + (error as Error).message)
+      setShowPreview(false)
+    } finally {
+      setPreviewLoading(false)
     }
   }
 
@@ -652,6 +730,14 @@ export function Notifications() {
                       />
                     </label>
                     <button
+                      onClick={() => handlePreviewReport('daily')}
+                      disabled={previewLoading}
+                      className="px-3 py-1.5 bg-surface-hover text-text-primary rounded-lg hover:bg-content2 transition-colors disabled:opacity-50 text-sm flex items-center gap-1.5"
+                    >
+                      <Eye className="w-4 h-4" />
+                      预览
+                    </button>
+                    <button
                       onClick={() => handleSendReport('daily')}
                       disabled={isSendingReport}
                       className="px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 text-sm"
@@ -708,6 +794,14 @@ export function Notifications() {
                         />
                       </label>
                       <button
+                        onClick={() => handlePreviewReport('weekly')}
+                        disabled={previewLoading}
+                        className="px-3 py-1.5 bg-surface-hover text-text-primary rounded-lg hover:bg-content2 transition-colors disabled:opacity-50 text-sm flex items-center gap-1.5"
+                      >
+                        <Eye className="w-4 h-4" />
+                        预览
+                      </button>
+                      <button
                         onClick={() => handleSendReport('weekly')}
                         disabled={isSendingReport}
                         className="px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 text-sm"
@@ -760,6 +854,14 @@ export function Notifications() {
                           className="px-3 py-1.5 bg-surface border border-border rounded-lg"
                         />
                       </label>
+                      <button
+                        onClick={() => handlePreviewReport('monthly')}
+                        disabled={previewLoading}
+                        className="px-3 py-1.5 bg-surface-hover text-text-primary rounded-lg hover:bg-content2 transition-colors disabled:opacity-50 text-sm flex items-center gap-1.5"
+                      >
+                        <Eye className="w-4 h-4" />
+                        预览
+                      </button>
                       <button
                         onClick={() => handleSendReport('monthly')}
                         disabled={isSendingReport}
@@ -825,5 +927,79 @@ export function Notifications() {
         </div>
       </Card>
     </div>
+
+    {/* 报告预览弹窗 */}
+    {showPreview && (
+      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowPreview(false)}>
+        <div className="bg-surface rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+          {/* 头部 */}
+          <div className="flex items-center justify-between p-6 border-b border-border">
+            <div>
+              <h2 className="text-xl font-bold">
+                {previewType === 'daily' ? '每日' : previewType === 'weekly' ? '每周' : '每月'}报告预览
+              </h2>
+              <p className="text-sm text-text-secondary mt-1">
+                这是将要发送的报告效果
+              </p>
+            </div>
+            <button
+              onClick={() => setShowPreview(false)}
+              className="p-2 hover:bg-surface-hover rounded-lg transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* 内容 */}
+          <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+            {previewLoading ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-text-secondary">正在生成预览...</p>
+              </div>
+            ) : previewImage ? (
+              <div className="flex justify-center">
+                <img 
+                  src={previewImage} 
+                  alt="报告预览" 
+                  className="max-w-full h-auto rounded-lg shadow-lg"
+                  style={{ maxHeight: 'calc(90vh - 240px)' }}
+                />
+              </div>
+            ) : (
+              <div className="text-center py-16 text-text-secondary">
+                预览生成失败
+              </div>
+            )}
+          </div>
+
+          {/* 底部 */}
+          <div className="flex items-center justify-between p-6 border-t border-border bg-surface-hover">
+            <p className="text-sm text-text-secondary">
+              💡 实际发送的报告可能因推送渠道而略有差异
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowPreview(false)}
+                className="px-4 py-2 bg-surface-hover hover:bg-content2 rounded-lg transition-colors"
+              >
+                关闭
+              </button>
+              <button
+                onClick={() => {
+                  setShowPreview(false)
+                  handleSendReport(previewType)
+                }}
+                disabled={isSendingReport}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                发送此报告
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
   )
 }
