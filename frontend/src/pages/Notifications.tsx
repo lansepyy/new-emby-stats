@@ -756,28 +756,6 @@ export function Notifications() {
                         立即发送
                       </button>
                     </div>
-                    
-                    {/* 预览区域 */}
-                    {previewImages.daily && (
-                      <div className="mt-4 p-3 bg-surface-hover rounded-lg border border-border">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-text-secondary">预览效果</span>
-                          <button
-                            onClick={() => setPreviewImages(prev => ({ ...prev, daily: null }))}
-                            className="text-xs text-text-secondary hover:text-text-primary"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="overflow-auto max-h-[600px] rounded-lg bg-[#1a202c]">
-                          <img 
-                            src={previewImages.daily} 
-                            alt="每日报告预览" 
-                            className="w-full h-auto"
-                          />
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -843,28 +821,6 @@ export function Notifications() {
                         立即发送
                       </button>
                     </div>
-                    
-                    {/* 预览区域 */}
-                    {previewImages.weekly && (
-                      <div className="mt-4 p-3 bg-surface-hover rounded-lg border border-border">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-text-secondary">预览效果</span>
-                          <button
-                            onClick={() => setPreviewImages(prev => ({ ...prev, weekly: null }))}
-                            className="text-xs text-text-secondary hover:text-text-primary"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="overflow-auto max-h-[600px] rounded-lg bg-[#1a202c]">
-                          <img 
-                            src={previewImages.weekly} 
-                            alt="每周报告预览" 
-                            className="w-full h-auto"
-                          />
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -926,12 +882,77 @@ export function Notifications() {
                         立即发送
                       </button>
                     </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 统一的报告预览区域 */}
+              {(previewImages.daily || previewImages.weekly || previewImages.monthly) && (
+                <div className="p-4 bg-surface-hover rounded-lg border border-border">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Eye className="w-5 h-5" />
+                      报告预览
+                    </h4>
+                    <button
+                      onClick={() => setPreviewImages({ daily: null, weekly: null, monthly: null })}
+                      className="text-sm text-text-secondary hover:text-text-primary flex items-center gap-1"
+                    >
+                      <X className="w-4 h-4" />
+                      清除所有
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* 每日报告预览 */}
+                    {previewImages.daily && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-text-secondary">每日报告</span>
+                          <button
+                            onClick={() => setPreviewImages(prev => ({ ...prev, daily: null }))}
+                            className="text-xs text-text-secondary hover:text-text-primary"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="overflow-auto max-h-[600px] rounded-lg bg-[#1a202c] border border-border/50">
+                          <img 
+                            src={previewImages.daily} 
+                            alt="每日报告预览" 
+                            className="w-full h-auto"
+                          />
+                        </div>
+                      </div>
+                    )}
                     
-                    {/* 预览区域 */}
+                    {/* 每周报告预览 */}
+                    {previewImages.weekly && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-text-secondary">每周报告</span>
+                          <button
+                            onClick={() => setPreviewImages(prev => ({ ...prev, weekly: null }))}
+                            className="text-xs text-text-secondary hover:text-text-primary"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="overflow-auto max-h-[600px] rounded-lg bg-[#1a202c] border border-border/50">
+                          <img 
+                            src={previewImages.weekly} 
+                            alt="每周报告预览" 
+                            className="w-full h-auto"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* 每月报告预览 */}
                     {previewImages.monthly && (
-                      <div className="mt-4 p-3 bg-surface-hover rounded-lg border border-border">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-text-secondary">预览效果</span>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-text-secondary">每月报告</span>
                           <button
                             onClick={() => setPreviewImages(prev => ({ ...prev, monthly: null }))}
                             className="text-xs text-text-secondary hover:text-text-primary"
@@ -939,7 +960,7 @@ export function Notifications() {
                             <X className="w-4 h-4" />
                           </button>
                         </div>
-                        <div className="overflow-auto max-h-[600px] rounded-lg bg-[#1a202c]">
+                        <div className="overflow-auto max-h-[600px] rounded-lg bg-[#1a202c] border border-border/50">
                           <img 
                             src={previewImages.monthly} 
                             alt="每月报告预览" 
@@ -949,8 +970,8 @@ export function Notifications() {
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* 报告发送提示 */}
               {reportMessage && (
