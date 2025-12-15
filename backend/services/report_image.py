@@ -12,6 +12,7 @@ import requests
 from pathlib import Path
 
 from config_storage import config_storage
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ class ReportImageService:
     def _load_emby_config(self):
         """加载 Emby 服务器配置"""
         try:
-            # Emby 服务器配置存储在 servers 字典中
+            # 方法1: 尝试从 servers 配置读取
             servers = config_storage.get("servers", {})
             if servers:
                 # 使用第一个服务器
@@ -61,11 +62,19 @@ class ReportImageService:
                     ""
                 )
                 
-                logger.info(f"加载 Emby 配置: URL={self.emby_url}, API_KEY={'已设置' if self.emby_api_key else '未设置'}, Server={server}")
-            else:
-                logger.warning("未配置 Emby 服务器")
+                logger.info(f"从 servers 配置加载 Emby: URL={self.emby_url}, API_KEY={'已设置' if self.emby_api_key else '未设置'}")
+                
+            # 方法2: 如果没有从 servers 读取到，使用环境变量作为后备
+            if not self.emby_url or not self.emby_api_key:
+                self.emby_url = settings.EMBY_URL.rstrip("/")
+                self.emby_api_key = settings.EMBY_API_KEY
+                logger.info(f"从环境变量加载 Emby: URL={self.emby_url}, API_KEY={'已设置' if self.emby_api_key else '未设置'}")
+                
         except Exception as e:
-            logger.error(f"加载 Emby 配置失败: {e}")
+            logger.error(f"加载 Emby 配置失败: {e}，尝试使用环境变量")
+            # 异常时使用环境变量
+            self.emby_url = settings.EMBY_URL.rstrip("/")
+            self.emby_api_key = settings.EMBY_API_KEY
     
     def _fetch_cover_image(self, item_id: str, width: int = 220, height: int = 310, quality: int = 90) -> Optional[bytes]:
         """实时获取封面图片（参考 MP 插件 primary 方法）
