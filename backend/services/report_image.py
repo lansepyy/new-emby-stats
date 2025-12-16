@@ -13,6 +13,7 @@ from pathlib import Path
 
 from config_storage import config_storage
 from config import settings
+from services.tmdb import TMDBService
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,10 @@ class ReportImageService:
         self.emby_url = None
         self.emby_api_key = None
         self._load_emby_config()
+        
+        # TMDB 服务（优先使用）
+        self.tmdb_service = None
+        self._load_tmdb_config()
     
     def _load_emby_config(self):
         """加载 Emby 服务器配置"""
@@ -76,11 +81,34 @@ class ReportImageService:
             self.emby_url = settings.EMBY_URL.rstrip("/")
             self.emby_api_key = settings.EMBY_API_KEY
     
-    def _fetch_cover_image(self, item_id: str, width: int = 220, height: int = 310, quality: int = 90) -> Optional[bytes]:
-        """实时获取封面图片（参考 MP 插件 primary 方法）
+    def _load_tmdb_config(self):
+        """加载 TMDB 配置并初始化服务"""
+        try:
+            tmdb_config = config_storage.get_tmdb_config()
+            api_key = tmdb_config.get("api_key", "")
+            image_base_url = tmdb_config.get("image_base_url", "https://image.tmdb.org/t/p/original")
+            proxy = tmdb_config.get("proxy", "")
+            
+            if api_key:
+                self.tmdb_service = TMDBService(
+                    api_key=api_key,
+                    image_base_url=image_base_url,
+                    emby_server=self.emby_url,
+                    proxy=proxy
+                )
+                logger.info("TMDB 服务初始化成功，将优先使用 TMDB 海报")
+            else:
+                logger.info("TMDB API Key 未配置，将使用 Emby 本地封面")
+        except Exception as e:
+            logger.error(f"加载 TMDB 配置失败: {e}")
+            self.tmdb_service = None
+    
+    def _fetch_cover_image(self, item_id: str, item_info: Dict[str, Any] = None, width: int = 220, height: int = 310, quality: int = 90) -> Optional[bytes]:
+        """实时获取封面图片（优先TMDB，回退Emby）
         
         Args:
             item_id: 项目 ID
+            item_info: 项目详细信息（包含类型、TMDB ID等）
             width: 最大宽度
             height: 最大高度
             quality: 图片质量 (1-100)
@@ -88,8 +116,25 @@ class ReportImageService:
         Returns:
             图片字节数据，失败返回 None
         """
+        # 方法1: 优先从TMDB获取海报（更高质量）
+        if self.tmdb_service and item_info:
+            try:
+                logger.info(f"尝试从 TMDB 获取海报: {item_info.get('name')}")
+                poster_url = self._get_tmdb_poster(item_info)
+                if poster_url:
+                    logger.info(f"TMDB 海报URL: {poster_url}")
+                    response = requests.get(poster_url, timeout=15)
+                    if response.status_code == 200:
+                        logger.info(f"TMDB 海报获取成功: {len(response.content)} bytes")
+                        return response.content
+                    else:
+                        logger.warning(f"TMDB 海报下载失败: HTTP {response.status_code}")
+            except Exception as e:
+                logger.warning(f"从 TMDB 获取海报失败: {e}")
+        
+        # 方法2: 回退到Emby本地封面
         if not self.emby_url or not self.emby_api_key or not item_id:
-            logger.warning(f"封面获取条件不足: URL={self.emby_url}, API_KEY={'已设置' if self.emby_api_key else '未设置'}, item_id={item_id}")
+            logger.warning(f"Emby 封面获取条件不足")
             return None
         
         try:
@@ -114,6 +159,59 @@ class ReportImageService:
         except Exception as e:
             logger.error(f"封面获取异常: {e}")
             return None
+    
+    def _get_tmdb_poster(self, item_info: Dict[str, Any]) -> Optional[str]:
+        """从TMDB获取海报URL（竖版海报）
+        
+        Args:
+            item_info: 包含类型、TMDB ID等信息的字典
+            
+        Returns:
+            海报图片URL或None
+        """
+        try:
+            item_type = item_info.get('type')
+            tmdb_id = item_info.get('tmdb_id')
+            
+            if not tmdb_id:
+                logger.debug(f"缺少 TMDB ID: {item_info.get('name')}")
+                return None
+            
+            api_key = self.tmdb_service.api_key
+            base_url = self.tmdb_service.image_base_url
+            proxies = self.tmdb_service.proxies
+            
+            # 根据类型获取详情
+            if item_type == 'Movie':
+                url = f"https://api.themoviedb.org/3/movie/{tmdb_id}"
+            elif item_type == 'Episode':
+                # 剧集使用SeriesId
+                series_id = item_info.get('series_tmdb_id')
+                if not series_id:
+                    logger.debug("剧集缺少 Series TMDB ID")
+                    return None
+                url = f"https://api.themoviedb.org/3/tv/{series_id}"
+            else:
+                return None
+            
+            params = {
+                "api_key": api_key,
+                "language": "zh-CN"
+            }
+            
+            response = requests.get(url, params=params, timeout=10, proxies=proxies)
+            if response.status_code == 200:
+                data = response.json()
+                poster_path = data.get("poster_path")
+                if poster_path:
+                    poster_url = f"{base_url}{poster_path}"
+                    logger.info(f"找到 TMDB 海报: {poster_url}")
+                    return poster_url
+            
+        except Exception as e:
+            logger.error(f"获取 TMDB 海报 URL 失败: {e}")
+        
+        return None
         
     def generate_report_image(self, report: Dict[str, Any], item_images: List[Optional[bytes]] = None) -> bytes:
         """生成报告图片 - 竖版精美设计（调整尺寸）
@@ -354,9 +452,18 @@ class ReportImageService:
         cover_width, cover_height = 75, 110  # 缩小封面
         item_id = item.get('item_id')
         
-        # 实时获取封面图片
-        logger.info(f"准备获取封面: item_id={item_id}, name={item.get('name')}")
-        cover_bytes = self._fetch_cover_image(item_id, width=150, height=220) if item_id else None
+        # 准备item_info用于TMDB查询
+        item_info = {
+            'item_id': item_id,
+            'name': item.get('name'),
+            'type': item.get('type'),
+            'tmdb_id': item.get('tmdb_id'),
+            'series_tmdb_id': item.get('series_tmdb_id')
+        }
+        
+        # 实时获取封面图片（优先TMDB）
+        logger.info(f"准备获取封面: item_id={item_id}, name={item.get('name')}, type={item.get('type')}")
+        cover_bytes = self._fetch_cover_image(item_id, item_info=item_info, width=150, height=220) if item_id else None
         
         if cover_bytes:
             try:

@@ -91,14 +91,38 @@ class ReportService:
             """
             
             top_content = []
+            emby_service = EmbyService()
             async with db.execute(top_content_query, [start_date, end_date]) as cursor:
                 async for row in cursor:
+                    item_id = row[2]
+                    item_type = row[1] or "未知"
+                    
+                    # 从Emby获取TMDB ID
+                    tmdb_id = None
+                    series_tmdb_id = None
+                    try:
+                        item_info = await emby_service.get_item_info(item_id)
+                        if item_info:
+                            provider_ids = item_info.get("ProviderIds", {})
+                            tmdb_id = provider_ids.get("Tmdb")
+                            # 如果是剧集，还需要获取SeriesId的TMDB ID
+                            if item_type == "Episode":
+                                series_id = item_info.get("SeriesId")
+                                if series_id:
+                                    series_info = await emby_service.get_item_info(series_id)
+                                    if series_info:
+                                        series_tmdb_id = series_info.get("ProviderIds", {}).get("Tmdb")
+                    except Exception as e:
+                        logger.warning(f"获取TMDB ID失败 (item_id={item_id}): {e}")
+                    
                     top_content.append({
                         "name": row[0] or "未知",
-                        "type": row[1] or "未知",
-                        "item_id": row[2],
+                        "type": item_type,
+                        "item_id": item_id,
                         "play_count": int(row[3] or 0),
-                        "hours": round(row[4] or 0, 1)
+                        "hours": round(row[4] or 0, 1),
+                        "tmdb_id": tmdb_id,
+                        "series_tmdb_id": series_tmdb_id
                     })
             
             # 3. 活跃用户 Top 5
