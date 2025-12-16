@@ -138,7 +138,27 @@ class ReportImageService:
             return None
         
         try:
-            url = f"{self.emby_url}/Items/{item_id}/Images/Primary"
+            # 对于Episode类型，需要使用SeriesId获取主海报
+            emby_item_id = item_id
+            if item_info and item_info.get('type') == 'Episode':
+                # 尝试从Emby API获取SeriesId
+                try:
+                    from services.emby import EmbyService
+                    import asyncio
+                    emby_service = EmbyService()
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    episode_info = loop.run_until_complete(emby_service.get_item_info(item_id))
+                    loop.close()
+                    
+                    series_id = episode_info.get("SeriesId")
+                    if series_id:
+                        emby_item_id = series_id
+                        logger.info(f"Episode类型，使用SeriesId: {series_id}")
+                except Exception as e:
+                    logger.warning(f"获取SeriesId失败，使用原始item_id: {e}")
+            
+            url = f"{self.emby_url}/Items/{emby_item_id}/Images/Primary"
             params = {
                 "maxWidth": width,
                 "maxHeight": height,
@@ -146,7 +166,7 @@ class ReportImageService:
                 "api_key": self.emby_api_key
             }
             
-            logger.info(f"正在获取封面: {url} (item_id={item_id})")
+            logger.info(f"正在获取封面: {url} (item_id={emby_item_id})")
             response = requests.get(url, params=params, timeout=10)
             
             if response.status_code == 200:
