@@ -104,14 +104,16 @@ class ReportService:
                         item_info = await emby_service.get_item_info(item_id)
                         if item_info:
                             provider_ids = item_info.get("ProviderIds", {})
-                            tmdb_id = provider_ids.get("Tmdb")
-                            # 如果是剧集，还需要获取SeriesId的TMDB ID
+                            # 如果是剧集，只使用SeriesId的TMDB ID（不使用集的TMDB ID）
                             if item_type == "Episode":
                                 series_id = item_info.get("SeriesId")
                                 if series_id:
                                     series_info = await emby_service.get_item_info(series_id)
                                     if series_info:
                                         series_tmdb_id = series_info.get("ProviderIds", {}).get("Tmdb")
+                            else:
+                                # 电影等其他类型使用自己的TMDB ID
+                                tmdb_id = provider_ids.get("Tmdb")
                     except Exception as e:
                         logger.warning(f"获取TMDB ID失败 (item_id={item_id}): {e}")
                     
