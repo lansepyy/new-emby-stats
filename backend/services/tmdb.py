@@ -10,10 +10,20 @@ logger = logging.getLogger(__name__)
 class TMDBService:
     """TMDB图片和信息获取服务"""
     
-    def __init__(self, api_key: str, image_base_url: str = "https://image.tmdb.org/t/p/original", emby_server: str = ""):
+    def __init__(self, api_key: str, image_base_url: str = "https://image.tmdb.org/t/p/original", emby_server: str = "", proxy: str = ""):
         self.api_key = api_key
         self.image_base_url = image_base_url
         self.emby_server = emby_server
+        self.proxy = proxy
+        
+        # 配置代理
+        self.proxies = None
+        if proxy:
+            self.proxies = {
+                'http': proxy,
+                'https': proxy
+            }
+            logger.info(f"TMDB 服务使用代理: {proxy}")
     
     def get_image_url(self, item: Dict[str, Any]) -> Optional[str]:
         """获取媒体项的图片URL（优先TMDB，回退Emby本地）"""
@@ -52,7 +62,7 @@ class TMDBService:
                 params["first_air_date_year"] = year
             
             search_url = "https://api.themoviedb.org/3/search/tv"
-            resp = requests.get(search_url, params=params, timeout=10)
+            resp = requests.get(search_url, params=params, timeout=10, proxies=self.proxies)
             
             if resp.status_code != 200:
                 logger.error(f"TMDB搜索失败: HTTP {resp.status_code}")
@@ -69,7 +79,7 @@ class TMDBService:
             
             # 获取详细信息
             detail_url = f"https://api.themoviedb.org/3/tv/{series_id}"
-            detail_resp = requests.get(detail_url, params={"api_key": self.api_key, "language": "zh-CN"}, timeout=10)
+            detail_resp = requests.get(detail_url, params={"api_key": self.api_key, "language": "zh-CN"}, timeout=10, proxies=self.proxies)
             
             if detail_resp.status_code == 200:
                 data = detail_resp.json()
@@ -104,7 +114,7 @@ class TMDBService:
         url = f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.api_key}&language=zh-CN"
         
         try:
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, timeout=10, proxies=self.proxies)
             if response.status_code == 200:
                 data = response.json()
                 

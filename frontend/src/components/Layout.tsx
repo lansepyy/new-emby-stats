@@ -9,6 +9,7 @@ import { useFilter } from '@/contexts/FilterContext'
 import { FilterPanel } from '@/components/FilterPanel'
 import { NameMappingPanel } from '@/components/NameMappingPanel'
 import { ServerManagementPanel } from '@/components/ServerManagementPanel'
+import VersionBadge from '@/components/VersionBadge'
 import { useServer } from '@/contexts/ServerContext'
 
 interface LayoutProps {
@@ -221,6 +222,9 @@ export function Layout({ children, hideChrome = false }: LayoutProps) {
           </AnimatePresence>
         </>
       )}
+
+      {/* 版本标识 */}
+      <VersionBadge />
 
     </div>
   )

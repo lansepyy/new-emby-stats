@@ -68,6 +68,7 @@ export function Notifications() {
   const [tmdbConfig, setTmdbConfig] = useState({
     apiKey: '',
     imageBaseUrl: 'https://image.tmdb.org/t/p/original',
+    proxy: '',
   })
 
   // 报告推送配置
@@ -131,6 +132,7 @@ export function Notifications() {
       setTmdbConfig({
         apiKey: data.tmdb.api_key || '',
         imageBaseUrl: data.tmdb.image_base_url || 'https://image.tmdb.org/t/p/original',
+        proxy: data.tmdb.proxy || '',
       })
       
       setReportConfig({
@@ -187,6 +189,7 @@ export function Notifications() {
         tmdb: {
           api_key: tmdbConfig.apiKey,
           image_base_url: tmdbConfig.imageBaseUrl,
+          proxy: tmdbConfig.proxy,
         },
         report: {
           enabled: reportConfig.enabled,
@@ -721,6 +724,23 @@ export function Notifications() {
                   placeholder="https://image.tmdb.org/t/p/original"
                   className="w-full px-4 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
+                <p className="text-xs text-text-secondary mt-1">
+                  TMDB 图片 URL 前缀。可选：original (原图), w1280 (1280宽), w780 (780宽), w500 (500宽)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">代理服务器（可选）</label>
+                <input
+                  type="text"
+                  value={tmdbConfig.proxy}
+                  onChange={e => setTmdbConfig({ ...tmdbConfig, proxy: e.target.value })}
+                  placeholder="http://127.0.0.1:7890 或 socks5://127.0.0.1:1080"
+                  className="w-full px-4 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs text-text-secondary mt-1">
+                  如果 TMDB 访问受限，可配置代理服务器。格式：http://host:port 或 socks5://host:port
+                </p>
               </div>
 
               <div className="mt-6 p-4 bg-surface-hover rounded-lg">

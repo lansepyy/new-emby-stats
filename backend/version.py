@@ -1,0 +1,30 @@
+"""版本信息"""
+
+VERSION = "2.0"
+
+CHANGELOG = {
+    "2.0": [
+        "✨ 集成 OneBot（QQ机器人）到所有通知场景",
+        "✨ 支持定时报告推送到 QQ 群和私聊",
+        "✨ 支持 Emby 实时事件推送到 QQ（播放/入库/登录/收藏）",
+        "✨ 新增代理配置，解决 TMDB 访问问题",
+        "✨ 新增版本信息显示和更新日志",
+        "🎨 优化 TMDB 图片 URL 配置说明",
+        "📝 完善文档说明",
+    ],
+    "1.0": [
+        "🎉 初始版本发布",
+        "📊 支持观影数据统计和报告",
+        "📱 支持 Telegram/企业微信/Discord 通知",
+        "🔔 支持 Emby Webhook 实时通知",
+    ]
+}
+
+
+def get_version_info():
+    """获取版本信息"""
+    return {
+        "version": VERSION,
+        "changelog": CHANGELOG,
+        "latest_changes": CHANGELOG.get(VERSION, [])
+    }

@@ -68,7 +68,8 @@ async def handle_emby_webhook(request: Request):
             tmdb_service = TMDBService(
                 api_key=tmdb_config.get("api_key", ""),
                 image_base_url=tmdb_config.get("image_base_url", "https://image.tmdb.org/t/p/original"),
-                emby_server=settings.EMBY_URL
+                emby_server=settings.EMBY_URL,
+                proxy=tmdb_config.get("proxy", "")
             )
             
             # 构建item对象

@@ -200,6 +200,13 @@ export const api = {
     if (!res.ok) throw new Error(`Failed to browse files: ${res.status}`)
     return res.json()
   },
+
+  // 版本信息
+  getVersion: async (): Promise<{ version: string; changelog: Record<string, string[]>; latest_changes: string[] }> => {
+    const res = await fetch(`${API_BASE}/config/version`)
+    if (!res.ok) throw new Error(`Failed to get version: ${res.status}`)
+    return res.json()
+  },
 }
 
 export default api

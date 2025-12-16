@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 from config_storage import config_storage
 from services.scheduler import report_scheduler
+from version import get_version_info
 import os
 import uuid
 from datetime import datetime
@@ -41,6 +42,7 @@ class OneBotConfig(BaseModel):
 class TMDBConfig(BaseModel):
     api_key: str = ""
     image_base_url: str = "https://image.tmdb.org/t/p/original"
+    proxy: str = ""  # 代理地址，格式：http://127.0.0.1:7890 或 socks5://127.0.0.1:1080
 
 
 class ReportChannels(BaseModel):
@@ -124,6 +126,12 @@ async def get_notification_templates() -> NotificationTemplates:
     """获取通知模板配置"""
     templates = config_storage.get_templates()
     return NotificationTemplates(templates=templates)
+
+
+@router.get("/version")
+async def get_version():
+    """获取版本信息"""
+    return get_version_info()
 
 
 @router.post("/notification/templates")
