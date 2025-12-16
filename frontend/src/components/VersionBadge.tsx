@@ -44,8 +44,8 @@ export default function VersionBadge() {
       {/* 更新日志弹窗 */}
       {showChangelog && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <Card className="max-w-2xl w-full max-h-[80vh] overflow-auto bg-background">
-            <div className="sticky top-0 bg-background border-b border-border p-6 flex items-center justify-between">
+          <Card className="max-w-2xl w-full max-h-[80vh] overflow-auto bg-white dark:bg-gray-900">
+            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-border p-6 flex items-center justify-between">
               <h2 className="text-xl font-semibold">更新日志</h2>
               <button
                 onClick={() => setShowChangelog(false)}
@@ -55,7 +55,7 @@ export default function VersionBadge() {
               </button>
             </div>
 
-            <div className="p-6 space-y-6 bg-background">
+            <div className="p-6 space-y-6 bg-white dark:bg-gray-900">
               {Object.entries(versionInfo.changelog)
                 .sort(([a], [b]) => b.localeCompare(a))
                 .map(([version, changes]) => (

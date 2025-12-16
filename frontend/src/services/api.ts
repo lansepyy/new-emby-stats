@@ -15,6 +15,11 @@ import type {
 
 const API_BASE = '/api'
 
+// 获取当前选中的服务器ID
+function getCurrentServerId(): string | null {
+  return localStorage.getItem('currentServerId')
+}
+
 // 认证状态变更回调
 let onAuthError: (() => void) | null = null
 
@@ -28,6 +33,13 @@ export type FilterParams = Record<string, string>
 // 构建带筛选参数的查询字符串
 function buildQueryString(params: FilterParams): string {
   const searchParams = new URLSearchParams()
+  
+  // 添加server_id参数
+  const serverId = getCurrentServerId()
+  if (serverId) {
+    searchParams.set('server_id', serverId)
+  }
+  
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null && value !== '') {
       searchParams.set(key, value)

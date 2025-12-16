@@ -4,21 +4,68 @@
 """
 import aiosqlite
 from config import settings
+from typing import Optional
+from config_storage import config_storage
 
 
-def get_playback_db():
+def get_server_config(server_id: Optional[str] = None) -> dict:
+    """获取服务器配置
+    
+    Args:
+        server_id: 服务器ID，如果为None则返回默认配置（使用环境变量）
+        
+    Returns:
+        包含数据库路径和其他配置的字典
+    """
+    if server_id is None:
+        # 使用环境变量的默认配置
+        return {
+            'playback_db': settings.PLAYBACK_DB,
+            'users_db': settings.USERS_DB,
+            'auth_db': settings.AUTH_DB,
+            'emby_url': settings.EMBY_URL,
+            'emby_api_key': settings.EMBY_API_KEY
+        }
+    
+    # 从配置存储中获取指定服务器的配置
+    servers = config_storage.get("servers", {})
+    if server_id not in servers:
+        # 如果指定的服务器不存在，回退到默认配置
+        return {
+            'playback_db': settings.PLAYBACK_DB,
+            'users_db': settings.USERS_DB,
+            'auth_db': settings.AUTH_DB,
+            'emby_url': settings.EMBY_URL,
+            'emby_api_key': settings.EMBY_API_KEY
+        }
+    
+    server = servers[server_id]
+    # 如果服务器配置中没有指定数据库路径，使用默认路径
+    return {
+        'playback_db': server.get('playback_db') or settings.PLAYBACK_DB,
+        'users_db': server.get('users_db') or settings.USERS_DB,
+        'auth_db': server.get('auth_db') or settings.AUTH_DB,
+        'emby_url': server.get('emby_url') or settings.EMBY_URL,
+        'emby_api_key': server.get('emby_api_key') or settings.EMBY_API_KEY
+    }
+
+
+def get_playback_db(server_id: Optional[str] = None):
     """获取播放记录数据库连接"""
-    return aiosqlite.connect(settings.PLAYBACK_DB)
+    config = get_server_config(server_id)
+    return aiosqlite.connect(config['playback_db'])
 
 
-def get_users_db():
+def get_users_db(server_id: Optional[str] = None):
     """获取用户数据库连接"""
-    return aiosqlite.connect(settings.USERS_DB)
+    config = get_server_config(server_id)
+    return aiosqlite.connect(config['users_db'])
 
 
-def get_auth_db():
+def get_auth_db(server_id: Optional[str] = None):
     """获取认证数据库连接"""
-    return aiosqlite.connect(settings.AUTH_DB)
+    config = get_server_config(server_id)
+    return aiosqlite.connect(config['auth_db'])
 
 
 def get_count_expr() -> str:

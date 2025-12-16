@@ -288,8 +288,26 @@ export function ServerManagementPanel({ isOpen, onClose }: ServerManagementPanel
                     />
                   </div>
 
-                  {!editingServer && (
-                    <>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Emby API Key（可选）</label>
+                    <input
+                      type="password"
+                      value={formData.emby_api_key}
+                      onChange={(e) => setFormData({ ...formData, emby_api_key: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-content1 border border-[var(--color-border)] focus:border-primary focus:outline-none"
+                      placeholder="留空则从数据库自动获取"
+                    />
+                    <p className="text-xs text-text-secondary mt-1">
+                      不填写时会自动从 /data/authentication.db 读取
+                    </p>
+                  </div>
+
+                  <details className="group">
+                    <summary className="cursor-pointer text-sm font-medium mb-2 flex items-center gap-2">
+                      <span>高级配置（可选）</span>
+                      <span className="text-xs text-text-secondary">- 通常无需配置</span>
+                    </summary>
+                    <div className="mt-3 space-y-4 pl-4 border-l-2 border-border">
                       <div>
                         <label className="block text-sm font-medium mb-2">播放记录数据库路径</label>
                         <div className="flex gap-2">
@@ -298,8 +316,7 @@ export function ServerManagementPanel({ isOpen, onClose }: ServerManagementPanel
                             value={formData.playback_db}
                             onChange={(e) => setFormData({ ...formData, playback_db: e.target.value })}
                             className="flex-1 px-3 py-2 rounded-lg bg-content1 border border-[var(--color-border)] focus:border-primary focus:outline-none"
-                            placeholder="/data/playback_reporting.db"
-                            required
+                            placeholder="/data/playback_reporting.db（默认）"
                           />
                           <button
                             type="button"
@@ -323,8 +340,7 @@ export function ServerManagementPanel({ isOpen, onClose }: ServerManagementPanel
                             value={formData.users_db}
                             onChange={(e) => setFormData({ ...formData, users_db: e.target.value })}
                             className="flex-1 px-3 py-2 rounded-lg bg-content1 border border-[var(--color-border)] focus:border-primary focus:outline-none"
-                            placeholder="/data/users.db"
-                            required
+                            placeholder="/data/users.db（默认）"
                           />
                           <button
                             type="button"
@@ -348,8 +364,7 @@ export function ServerManagementPanel({ isOpen, onClose }: ServerManagementPanel
                             value={formData.auth_db}
                             onChange={(e) => setFormData({ ...formData, auth_db: e.target.value })}
                             className="flex-1 px-3 py-2 rounded-lg bg-content1 border border-[var(--color-border)] focus:border-primary focus:outline-none"
-                            placeholder="/data/authentication.db"
-                            required
+                            placeholder="/data/authentication.db（默认）"
                           />
                           <button
                             type="button"
@@ -364,19 +379,8 @@ export function ServerManagementPanel({ isOpen, onClose }: ServerManagementPanel
                           </button>
                         </div>
                       </div>
-                    </>
-                  )}
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2">API Key（可选）</label>
-                    <input
-                      type="text"
-                      value={formData.emby_api_key}
-                      onChange={(e) => setFormData({ ...formData, emby_api_key: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg bg-content1 border border-[var(--color-border)] focus:border-primary focus:outline-none"
-                      placeholder="留空则自动从数据库获取"
-                    />
-                  </div>
+                    </div>
+                  </details>
 
                   <div className="flex items-center gap-2">
                     <input

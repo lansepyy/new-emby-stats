@@ -103,6 +103,7 @@ async def get_overview(
     devices: Optional[str] = Query(default=None, description="设备列表，逗号分隔"),
     item_types: Optional[str] = Query(default=None, description="媒体类型列表，逗号分隔"),
     playback_methods: Optional[str] = Query(default=None, description="播放方式列表，逗号分隔"),
+    server_id: Optional[str] = Query(default=None, description="服务器ID"),
 ):
     """获取总览统计"""
     user_map = await user_service.get_user_map()
@@ -125,7 +126,7 @@ async def get_overview(
         playback_methods=method_list,
     )
 
-    async with get_playback_db() as db:
+    async with get_playback_db(server_id) as db:
         count_expr = get_count_expr()
 
         # 总播放次数（只计满足时长的）和时长（统计所有）
@@ -176,6 +177,7 @@ async def get_trend(
     devices: Optional[str] = Query(default=None),
     item_types: Optional[str] = Query(default=None),
     playback_methods: Optional[str] = Query(default=None),
+    server_id: Optional[str] = Query(default=None),
 ):
     """获取播放趋势（按天）"""
     user_list = [u.strip() for u in users.split(",")] if users else None
@@ -198,7 +200,7 @@ async def get_trend(
     count_expr = get_count_expr()
     date_col = local_date("DateCreated")
 
-    async with get_playback_db() as db:
+    async with get_playback_db(server_id) as db:
         async with db.execute(f"""
             SELECT
                 {date_col} as play_date,
@@ -230,6 +232,7 @@ async def get_user_stats(
     devices: Optional[str] = Query(default=None),
     item_types: Optional[str] = Query(default=None),
     playback_methods: Optional[str] = Query(default=None),
+    server_id: Optional[str] = Query(default=None),
 ):
     """获取用户统计"""
     user_map = await user_service.get_user_map()
@@ -254,7 +257,7 @@ async def get_user_stats(
     count_expr = get_count_expr()
     datetime_col = local_datetime("DateCreated")
 
-    async with get_playback_db() as db:
+    async with get_playback_db(server_id) as db:
         async with db.execute(f"""
             SELECT
                 UserId,
@@ -292,6 +295,7 @@ async def get_client_stats(
     devices: Optional[str] = Query(default=None),
     item_types: Optional[str] = Query(default=None),
     playback_methods: Optional[str] = Query(default=None),
+    server_id: Optional[str] = Query(default=None),
 ):
     """获取客户端统计"""
     user_list = [u.strip() for u in users.split(",")] if users else None
@@ -313,7 +317,7 @@ async def get_client_stats(
 
     count_expr = get_count_expr()
 
-    async with get_playback_db() as db:
+    async with get_playback_db(server_id) as db:
         async with db.execute(f"""
             SELECT
                 ClientName,
@@ -368,6 +372,7 @@ async def get_device_stats(
     devices: Optional[str] = Query(default=None),
     item_types: Optional[str] = Query(default=None),
     playback_methods: Optional[str] = Query(default=None),
+    server_id: Optional[str] = Query(default=None),
 ):
     """获取设备统计"""
     user_list = [u.strip() for u in users.split(",")] if users else None
@@ -389,7 +394,7 @@ async def get_device_stats(
 
     count_expr = get_count_expr()
 
-    async with get_playback_db() as db:
+    async with get_playback_db(server_id) as db:
         async with db.execute(f"""
             SELECT
                 DeviceName,
@@ -450,6 +455,7 @@ async def get_playback_methods(
     devices: Optional[str] = Query(default=None),
     item_types: Optional[str] = Query(default=None),
     playback_methods: Optional[str] = Query(default=None),
+    server_id: Optional[str] = Query(default=None),
 ):
     """获取播放方式统计"""
     user_list = [u.strip() for u in users.split(",")] if users else None
@@ -471,7 +477,7 @@ async def get_playback_methods(
 
     count_expr = get_count_expr()
 
-    async with get_playback_db() as db:
+    async with get_playback_db(server_id) as db:
         async with db.execute(f"""
             SELECT
                 PlaybackMethod,
@@ -503,6 +509,7 @@ async def get_hourly_stats(
     devices: Optional[str] = Query(default=None),
     item_types: Optional[str] = Query(default=None),
     playback_methods: Optional[str] = Query(default=None),
+    server_id: Optional[str] = Query(default=None),
 ):
     """获取按小时统计（热力图数据）"""
     user_list = [u.strip() for u in users.split(",")] if users else None
@@ -525,7 +532,7 @@ async def get_hourly_stats(
     count_expr = get_count_expr()
     datetime_col = local_datetime("DateCreated")
 
-    async with get_playback_db() as db:
+    async with get_playback_db(server_id) as db:
         async with db.execute(f"""
             SELECT
                 strftime('%w', {datetime_col}) as day_of_week,
@@ -623,6 +630,7 @@ async def get_recent_plays(
     item_types: Optional[str] = Query(default=None, description="媒体类型列表，逗号分隔"),
     playback_methods: Optional[str] = Query(default=None, description="播放方式列表，逗号分隔"),
     search: Optional[str] = Query(default=None, description="搜索关键词，匹配内容名称"),
+    server_id: Optional[str] = Query(default=None, description="服务器ID"),
 ):
     """获取最近播放记录"""
     user_map = await user_service.get_user_map()
@@ -654,7 +662,7 @@ async def get_recent_plays(
     # 获取播放时长过滤条件
     duration_filter = get_duration_filter()
 
-    async with get_playback_db() as db:
+    async with get_playback_db(server_id) as db:
         async with db.execute(f"""
             SELECT
                 {datetime_col} as LocalTime,
@@ -719,11 +727,13 @@ async def get_recent_plays(
 
 
 @router.get("/filter-options")
-async def get_filter_options():
+async def get_filter_options(
+    server_id: Optional[str] = Query(default=None, description="服务器ID"),
+):
     """获取所有可用的筛选选项"""
     user_map = await user_service.get_user_map()
 
-    async with get_playback_db() as db:
+    async with get_playback_db(server_id) as db:
         # 获取所有用户
         async with db.execute("""
             SELECT DISTINCT UserId FROM PlaybackActivity WHERE UserId IS NOT NULL

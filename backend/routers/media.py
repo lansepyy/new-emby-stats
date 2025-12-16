@@ -87,6 +87,7 @@ async def get_top_content(
     clients: Optional[str] = Query(default=None),
     devices: Optional[str] = Query(default=None),
     playback_methods: Optional[str] = Query(default=None),
+    server_id: Optional[str] = Query(default=None),
 ):
     """获取热门内容排行（剧集按剧名聚合，电影等按ItemId）"""
     user_list = [u.strip() for u in users.split(",")] if users else None
@@ -108,7 +109,7 @@ async def get_top_content(
 
     count_expr = get_count_expr()
 
-    async with get_playback_db() as db:
+    async with get_playback_db(server_id) as db:
         query = f"""
             SELECT
                 ItemId,
@@ -208,6 +209,7 @@ async def get_top_shows(
     clients: Optional[str] = Query(default=None),
     devices: Optional[str] = Query(default=None),
     playback_methods: Optional[str] = Query(default=None),
+    server_id: Optional[str] = Query(default=None),
 ):
     """获取热门剧集（按剧名聚合）"""
     user_list = [u.strip() for u in users.split(",")] if users else None
@@ -228,7 +230,7 @@ async def get_top_shows(
 
     count_expr = get_count_expr()
 
-    async with get_playback_db() as db:
+    async with get_playback_db(server_id) as db:
         async with db.execute(f"""
             SELECT
                 ItemId,
@@ -330,6 +332,7 @@ async def get_favorites(
     start_date: Optional[str] = Query(default=None),
     end_date: Optional[str] = Query(default=None),
     item_type: Optional[str] = Query(default=None),
+    server_id: Optional[str] = Query(default=None),
 ):
     """获取用户收藏统计
     
@@ -426,7 +429,7 @@ async def get_favorites(
                             }
             
             # 获取总用户数
-            async with get_playback_db() as db:
+            async with get_playback_db(server_id) as db:
                 total_users_query = "SELECT COUNT(DISTINCT UserId) FROM PlaybackActivity WHERE UserId IS NOT NULL"
                 async with db.execute(total_users_query) as cursor:
                     row = await cursor.fetchone()
