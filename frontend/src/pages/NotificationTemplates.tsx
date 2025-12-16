@@ -187,9 +187,9 @@ export function NotificationTemplates({ onBack }: NotificationTemplatesProps) {
                 <label className="block text-sm font-medium">标题模板</label>
                 <button
                   onClick={handleFormat}
-                  className="text-xs text-primary hover:underline"
+                  className="px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-md transition-colors"
                 >
-                  左对齐
+                  左对齐格式化
                 </button>
               </div>
               <textarea

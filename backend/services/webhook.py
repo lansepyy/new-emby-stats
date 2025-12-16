@@ -40,16 +40,19 @@ class WebhookService:
         """提取设备信息和IP地址"""
         logger.debug("完整响应数据: %s", json.dumps(response, indent=2, ensure_ascii=False))
         
-        # 设备名称 - 添加更多可能的位置
+        # 设备名称 - 添加更多可能的位置，包括User字段
         device_name = (
             response.get("DeviceName") 
             or response.get("Client")
             or response.get("Session", {}).get("DeviceName")
             or response.get("Device", {}).get("DeviceName")
             or response.get("Session", {}).get("Client")
+            or response.get("User", {}).get("DeviceName")
+            or response.get("User", {}).get("Client")
             or response.get("AppName")
             or response.get("ClientName")
-            or "未知设备"
+            or response.get("NotificationUsername")  # 某些事件可能用这个
+            or "Web界面"
         )
         
         # IP地址提取 - 添加更多可能的位置
