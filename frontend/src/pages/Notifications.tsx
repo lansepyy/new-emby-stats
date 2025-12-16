@@ -1082,7 +1082,7 @@ export function Notifications() {
               <div className="mt-6 p-4 bg-surface-hover rounded-lg">
                 <h4 className="font-medium mb-2">关于观影报告</h4>
                 <ul className="text-sm text-text-secondary space-y-1 list-disc list-inside">
-                  <li>报告会发送到已配置的推送渠道（Telegram/企业微信/Discord）</li>
+                  <li>报告会发送到已配置的推送渠道（Telegram/企业微信/Discord/OneBot）</li>
                   <li>每日报告统计昨天的观影数据</li>
                   <li>每周报告统计过去7天的数据</li>
                   <li>每月报告统计过去30天的数据</li>

@@ -133,6 +133,7 @@ class ReportScheduler:
         tg_config = config_storage.get_telegram_config()
         wecom_config = config_storage.get_wecom_config()
         discord_config = config_storage.get_discord_config()
+        onebot_config = config_storage.get("onebot", {})
         
         channels = report_config.get("channels", {"telegram": True})
         report_title = report.get("title", "观影报告")
@@ -175,7 +176,8 @@ class ReportScheduler:
                 "users": tg_config.get("users", []),
             },
             "wecom": wecom_config,
-            "discord": discord_config
+            "discord": discord_config,
+            "onebot": onebot_config
         }
         
         notification_service = NotificationService(notification_config)
@@ -215,6 +217,15 @@ class ReportScheduler:
             except Exception as e:
                 logger.error(f"Discord 发送失败: {e}")
         
+        # OneBot
+        if channels.get("onebot") and onebot_config.get("http_url"):
+            try:
+                if notification_service._send_onebot_photo_bytes(image_bytes, report_title):
+                    sent_count += 1
+                    logger.info("报告图片已通过 OneBot 发送")
+            except Exception as e:
+                logger.error(f"OneBot 发送失败: {e}")
+        
         if sent_count == 0:
             logger.warning("没有成功发送到任何渠道")
     
@@ -223,6 +234,9 @@ class ReportScheduler:
         report_text = report_service.format_report_text(report)
         report_title = report.get("title", "观影报告")
         
+        # 获取onebot配置
+        onebot_config = config_storage.get("onebot", {})
+        
         notification_config = {
             "telegram": {
                 "token": tg_config.get("bot_token", ""),
@@ -230,7 +244,8 @@ class ReportScheduler:
                 "users": tg_config.get("users", []),
             },
             "wecom": wecom_config,
-            "discord": discord_config
+            "discord": discord_config,
+            "onebot": onebot_config
         }
         
         notification_service = NotificationService(notification_config)
@@ -255,6 +270,13 @@ class ReportScheduler:
                 logger.info("报告文本已通过 Discord 发送")
             except Exception as e:
                 logger.error(f"Discord 发送失败: {e}")
+        
+        if channels.get("onebot") and onebot_config.get("http_url"):
+            try:
+                await notification_service.send_onebot(report_title, report_text)
+                logger.info("报告文本已通过 OneBot 发送")
+            except Exception as e:
+                logger.error(f"OneBot 发送失败: {e}")
 
 
 # 全局调度器实例

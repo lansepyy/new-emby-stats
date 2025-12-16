@@ -43,6 +43,7 @@ async def handle_emby_webhook(request: Request):
         tg_config = config_storage.get_telegram_config()
         wecom_config = config_storage.get_wecom_config()
         discord_config = config_storage.get_discord_config()
+        onebot_config = config_storage.get("onebot", {})
         tmdb_config = config_storage.get_tmdb_config()
         
         notification_config = {
@@ -52,7 +53,8 @@ async def handle_emby_webhook(request: Request):
                 "users": tg_config.get("users", []),
             },
             "wecom": wecom_config,
-            "discord": discord_config
+            "discord": discord_config,
+            "onebot": onebot_config
         }
         
         # 初始化通知服务
@@ -117,6 +119,7 @@ async def test_notification():
         tg_config = config_storage.get_telegram_config()
         wecom_config = config_storage.get_wecom_config()
         discord_config = config_storage.get_discord_config()
+        onebot_config = config_storage.get("onebot", {})
         
         notification_config = {
             "telegram": {
@@ -125,7 +128,8 @@ async def test_notification():
                 "users": tg_config.get("users", []),
             },
             "wecom": wecom_config,
-            "discord": discord_config
+            "discord": discord_config,
+            "onebot": onebot_config
         }
         
         notification_service = NotificationService(notification_config)
