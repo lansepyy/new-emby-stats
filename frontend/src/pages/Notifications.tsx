@@ -745,10 +745,21 @@ export function Notifications() {
 
               <div className="mt-6 p-4 bg-surface-hover rounded-lg">
                 <h4 className="font-medium mb-2">关于 TMDB</h4>
-                <p className="text-sm text-text-secondary">
-                  TMDB (The Movie Database) 用于获取电影和剧集的高质量海报、背景图和详细信息。
-                  配置后，通知中将显示更精美的媒体图片。
-                </p>
+                <div className="text-sm text-text-secondary space-y-2">
+                  <p>
+                    TMDB (The Movie Database) 用于获取电影和剧集的高质量海报、背景图和详细信息。
+                    配置后，通知中将显示更精美的媒体图片。
+                  </p>
+                  <div>
+                    <p className="font-medium text-text-primary mb-1">图片基础 URL 可选格式：</p>
+                    <ul className="list-disc list-inside space-y-0.5 ml-2">
+                      <li><code className="text-xs bg-surface px-1 py-0.5 rounded">https://image.tmdb.org/t/p/original</code> - 原图（默认，最高质量）</li>
+                      <li><code className="text-xs bg-surface px-1 py-0.5 rounded">https://image.tmdb.org/t/p/w1280</code> - 1280像素宽</li>
+                      <li><code className="text-xs bg-surface px-1 py-0.5 rounded">https://image.tmdb.org/t/p/w780</code> - 780像素宽</li>
+                      <li><code className="text-xs bg-surface px-1 py-0.5 rounded">https://image.tmdb.org/t/p/w500</code> - 500像素宽</li>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
           )}
