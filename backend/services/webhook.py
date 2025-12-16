@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, Tuple
 import json
+from services.emby import EmbyService
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +12,7 @@ class WebhookService:
     """处理Emby Webhook事件"""
     
     def __init__(self):
+        self.emby_service = EmbyService()
         self.event_actions = {
             "playback.start": "开始播放",
             "playback.stop": "停止播放",
@@ -107,7 +109,7 @@ class WebhookService:
         else:
             return f"{size_bytes / (1024 ** 3):.2f} GB"
     
-    def build_event_context(self, response: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def build_event_context(self, response: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """构建事件上下文数据"""
         event = response.get("Event")
         if not event:
@@ -170,13 +172,27 @@ class WebhookService:
             runtime_ticks = item.get("RunTimeTicks", 0)
             progress = self.format_progress(position_ticks, runtime_ticks)
             
+            # 获取TMDB ID（Episode使用Series ID）
+            tmdb_id = None
+            if item.get("Type") == "Episode":
+                series_id = item.get("SeriesId")
+                if series_id:
+                    try:
+                        series_info = await self.emby_service.get_item_info(series_id)
+                        if series_info:
+                            tmdb_id = series_info.get("ProviderIds", {}).get("Tmdb")
+                    except Exception as e:
+                        logger.warning(f"获取Series TMDB ID失败: {e}")
+            else:
+                tmdb_id = item.get("ProviderIds", {}).get("Tmdb")
+            
             context.update({
                 "media_type": media_type,
                 "item_name": media_name,
                 "item_year": item.get("ProductionYear"),
                 "overview": item.get("Overview", ""),
                 "rating": item.get("CommunityRating"),
-                "tmdb_id": item.get("ProviderIds", {}).get("Tmdb"),
+                "tmdb_id": tmdb_id,
                 "imdb_id": item.get("ProviderIds", {}).get("Imdb"),
                 "progress": progress,
                 "item_id": item.get("Id"),
@@ -205,13 +221,27 @@ class WebhookService:
                 episode_num = item.get("IndexNumber", 0)
                 media_name = f"{series_name} S{season_num}E{episode_num} - {media_name}"
             
+            # 获取TMDB ID（Episode使用Series ID）
+            tmdb_id = None
+            if media_type == "剧集":
+                series_id = item.get("SeriesId")
+                if series_id:
+                    try:
+                        series_info = await self.emby_service.get_item_info(series_id)
+                        if series_info:
+                            tmdb_id = series_info.get("ProviderIds", {}).get("Tmdb")
+                    except Exception as e:
+                        logger.warning(f"获取Series TMDB ID失败: {e}")
+            else:
+                tmdb_id = item.get("ProviderIds", {}).get("Tmdb")
+            
             context.update({
                 "media_type": media_type,
                 "item_name": media_name,
                 "item_year": item.get("ProductionYear"),
                 "overview": item.get("Overview", ""),
                 "rating": item.get("CommunityRating"),
-                "tmdb_id": item.get("ProviderIds", {}).get("Tmdb"),
+                "tmdb_id": tmdb_id,
                 "imdb_id": item.get("ProviderIds", {}).get("Imdb"),
                 "size": self.format_size(item.get("Size", 0)) if item.get("Size") else None,
                 "item_id": item.get("Id"),
@@ -244,13 +274,27 @@ class WebhookService:
                 episode_num = item.get("IndexNumber", 0)
                 media_name = f"{series_name} S{season_num}E{episode_num} - {media_name}"
             
+            # 获取TMDB ID（Episode使用Series ID）
+            tmdb_id = None
+            if item.get("Type") == "Episode":
+                series_id = item.get("SeriesId")
+                if series_id:
+                    try:
+                        series_info = await self.emby_service.get_item_info(series_id)
+                        if series_info:
+                            tmdb_id = series_info.get("ProviderIds", {}).get("Tmdb")
+                    except Exception as e:
+                        logger.warning(f"获取Series TMDB ID失败: {e}")
+            else:
+                tmdb_id = item.get("ProviderIds", {}).get("Tmdb")
+            
             context.update({
                 "media_type": media_type,
                 "item_name": media_name,
                 "item_year": item.get("ProductionYear"),
                 "overview": item.get("Overview", ""),
                 "rating": item.get("CommunityRating"),
-                "tmdb_id": item.get("ProviderIds", {}).get("Tmdb"),
+                "tmdb_id": tmdb_id,
                 "imdb_id": item.get("ProviderIds", {}).get("Imdb"),
                 "item_id": item.get("Id"),
                 "item_type": item.get("Type"),

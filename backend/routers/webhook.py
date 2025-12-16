@@ -35,7 +35,7 @@ async def handle_emby_webhook(request: Request):
         logger.info(f"完整webhook数据: {data}")
         
         # 构建事件上下文
-        context = webhook_service.build_event_context(data)
+        context = await webhook_service.build_event_context(data)
         if not context:
             raise HTTPException(status_code=400, detail="无效的事件数据")
         
