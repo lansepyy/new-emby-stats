@@ -21,8 +21,8 @@ class ReportImageService:
     """报告图片生成服务 - 竖版设计"""
     
     def __init__(self):
-        # 竖版尺寸 (参考前端 1080px 宽度)
-        self.width = 1080
+        # 竖版尺寸 (与web手动推送一致)
+        self.width = 720  # 缩小宽度
         self.bg_color = (26, 32, 44)  # 深色背景
         self.card_color = (45, 55, 72)  # 卡片背景
         self.text_primary = (255, 255, 255)  # 主文字
@@ -116,7 +116,7 @@ class ReportImageService:
             return None
         
     def generate_report_image(self, report: Dict[str, Any], item_images: List[Optional[bytes]] = None) -> bytes:
-        """生成报告图片 - 竖版精美设计
+        """生成报告图片 - 竖版精美设计（调整尺寸）
         
         Args:
             report: 报告数据
@@ -125,13 +125,13 @@ class ReportImageService:
         Returns:
             PNG图片字节数据
         """
-        # 计算高度 (参考前端组件布局)
-        header_height = 260  # 标题区
-        stats_height = 340   # 统计卡片 (增加高度)
-        content_title_height = 120  # "热门内容"标题
+        # 计算高度（调整各部分尺寸）
+        header_height = 220  # 标题区
+        stats_height = 280   # 统计卡片
+        content_title_height = 100  # "热门内容"标题
         item_count = min(len(report.get('top_content', [])), 5)
-        content_height = item_count * 190 + (item_count - 1) * 20  # 每项190px，间距20px
-        footer_height = 100
+        content_height = item_count * 130 + (item_count - 1) * 15  # 每项130px，间距15px
+        footer_height = 80
         total_height = header_height + stats_height + content_title_height + content_height + footer_height
         
         # 创建画布 - 尝试使用背景图
@@ -199,34 +199,34 @@ class ReportImageService:
     
     def _draw_header(self, draw: ImageDraw, report: Dict[str, Any], y: int) -> int:
         """绘制标题区域 - 参考前端样式"""
-        # 标题 - 添加文字描边效果
-        title_font = self._get_font(72, bold=True)
-        title_text = report['title']
+        # 标题 - 移除emoji避免乱码
+        title_font = self._get_font(48, bold=True)  # 调整字号适配新宽度
+        title_text = report['title'].replace('📊 ', '').replace('📅 ', '').replace('📆 ', '')  # 移除emoji
         self._draw_text_with_stroke(
-            draw, (50, y + 50), title_text, title_font,
-            fill=self.text_primary, stroke_color=(0, 0, 0), stroke_width=3
+            draw, (40, y + 40), title_text, title_font,
+            fill=self.text_primary, stroke_color=(0, 0, 0), stroke_width=2
         )
         
         # 日期
-        date_font = self._get_font(36)
+        date_font = self._get_font(24)  # 调整字号
         self._draw_text_with_stroke(
-            draw, (50, y + 170), report['period'], date_font,
-            fill=self.text_secondary, stroke_color=(0, 0, 0), stroke_width=2
+            draw, (40, y + 140), report['period'], date_font,
+            fill=self.text_secondary, stroke_color=(0, 0, 0), stroke_width=1
         )
         
-        return y + 260
+        return y + 220  # 调整高度
     
     def _draw_stats(self, draw: ImageDraw, report: Dict[str, Any], y: int) -> int:
-        """绘制统计卡片 - 参考前端样式，增大尺寸"""
+        """绘制统计卡片 - 参考前端样式，调整尺寸"""
         summary = report['summary']
         
-        # 卡片背景
-        card_padding = 50
-        card_y = y + 20
-        card_height = 280  # 增加高度
+        # 卡片背景 - 调整padding
+        card_padding = 30
+        card_y = y + 15
+        card_height = 240  # 调整高度
         draw.rounded_rectangle(
             [(card_padding, card_y), (self.width - card_padding, card_y + card_height)],
-            radius=20,
+            radius=15,
             fill=self.card_color
         )
         
@@ -239,7 +239,7 @@ class ReportImageService:
         self._draw_stat_item(
             draw, 
             card_padding + col_width * 0 + col_width // 2,
-            card_y + 50,
+            card_y + 40,
             f"{int(hours)}小时{minutes}分",
             "观看时长",
             self.accent_cyan
@@ -249,7 +249,7 @@ class ReportImageService:
         self._draw_stat_item(
             draw,
             card_padding + col_width * 1 + col_width // 2,
-            card_y + 50,
+            card_y + 40,
             f"{summary['total_plays']}次",
             "播放次数",
             self.accent_purple
@@ -260,7 +260,7 @@ class ReportImageService:
         self._draw_stat_item(
             draw,
             card_padding + col_width * 2 + col_width // 2,
-            card_y + 50,
+            card_y + 40,
             f"{total_items}部",
             "观看内容",
             self.accent_yellow
@@ -273,24 +273,24 @@ class ReportImageService:
         episode_hours = summary['total_hours'] - movie_hours
         
         detail_text = f"电影 {movie_count}部 · {int(movie_hours)}h{int((movie_hours % 1) * 60)}m    剧集 {episode_count}集 · {int(episode_hours)}h{int((episode_hours % 1) * 60)}m"
-        detail_font = self._get_font(22)
+        detail_font = self._get_font(18)  # 调整字号
         
         # 居中绘制
         bbox = draw.textbbox((0, 0), detail_text, font=detail_font)
         text_width = bbox[2] - bbox[0]
         draw.text(
-            ((self.width - text_width) // 2, card_y + card_height - 55),
+            ((self.width - text_width) // 2, card_y + card_height - 50),
             detail_text,
             fill=self.text_secondary,
             font=detail_font
         )
         
-        return card_y + card_height + 50
+        return card_y + card_height + 40
     
     def _draw_stat_item(self, draw: ImageDraw, x: int, y: int, value: str, label: str, color: tuple):
-        """绘制单个统计项（居中）- 添加描边效果"""
-        value_font = self._get_font(52, bold=True)
-        label_font = self._get_font(20)
+        """绘制单个统计项（居中）- 调整字号"""
+        value_font = self._get_font(36, bold=True)  # 调整字号
+        label_font = self._get_font(16)  # 调整字号
         
         # 计算文字宽度以居中
         value_bbox = draw.textbbox((0, 0), value, font=value_font)
@@ -302,61 +302,61 @@ class ReportImageService:
         # 绘制数值（居中，带描边）
         self._draw_text_with_stroke(
             draw, (x - value_width // 2, y), value, value_font,
-            fill=color, stroke_color=(0, 0, 0), stroke_width=2
+            fill=color, stroke_color=(0, 0, 0), stroke_width=1
         )
         
         # 绘制标签（居中）
-        draw.text((x - label_width // 2, y + 85), label, fill=self.text_secondary, font=label_font)
+        draw.text((x - label_width // 2, y + 60), label, fill=self.text_secondary, font=label_font)
     
     def _draw_top_content(self, draw: ImageDraw, img: Image, report: Dict[str, Any], y: int, item_images: List[Optional[bytes]] = None) -> int:
-        """绘制热门内容列表 - 参考前端样式"""
+        """绘制热门内容列表 - 调整尺寸"""
         # 标题
-        title_font = self._get_font(42, bold=True)
+        title_font = self._get_font(32, bold=True)  # 调整字号
         self._draw_text_with_stroke(
-            draw, (50, y), "热门内容", title_font,
-            fill=self.text_primary, stroke_color=(0, 0, 0), stroke_width=2
+            draw, (30, y), "热门内容", title_font,
+            fill=self.text_primary, stroke_color=(0, 0, 0), stroke_width=1
         )
         
-        y += 90  # 增加间距
+        y += 70  # 调整间距
         top_content = report.get('top_content', [])[:5]  # 最多5个
         
         for i, item in enumerate(top_content):
             y = self._draw_content_item(draw, img, y, i, item, item_images[i] if item_images and i < len(item_images) else None)
-            y += 20  # 卡片间距
+            y += 15  # 卡片间距（调整）
         
         return y
     
     def _draw_content_item(self, draw: ImageDraw, img: Image, y: int, index: int, item: Dict[str, Any], cover_image: Optional[bytes]) -> int:
-        """绘制单个内容项 - 参考 MP 插件实时获取封面"""
-        card_padding = 50
-        item_height = 170  # 增加高度以容纳更大的封面
+        """绘制单个内容项 - 调整尺寸"""
+        card_padding = 30
+        item_height = 130  # 调整高度
         
         # 卡片背景
         draw.rounded_rectangle(
             [(card_padding, y), (self.width - card_padding, y + item_height)],
-            radius=16,
+            radius=12,
             fill=self.card_color
         )
         
-        x_offset = card_padding + 25
+        x_offset = card_padding + 20
         
-        # 排名 - 添加描边
-        rank_font = self._get_font(52, bold=True)
+        # 排名 - 调整字号
+        rank_font = self._get_font(36, bold=True)  # 调整字号
         rank_text = f"#{index + 1}"
         self._draw_text_with_stroke(
-            draw, (x_offset, y + 60), rank_text, rank_font,
-            fill=self.accent_yellow, stroke_color=(0, 0, 0), stroke_width=3
+            draw, (x_offset, y + 45), rank_text, rank_font,
+            fill=self.accent_yellow, stroke_color=(0, 0, 0), stroke_width=2
         )
         
-        x_offset += 85
+        x_offset += 60
         
-        # 封面图 - 实时获取（参考 MP 插件）
-        cover_width, cover_height = 110, 155
+        # 封面图 - 调整尺寸
+        cover_width, cover_height = 75, 110  # 缩小封面
         item_id = item.get('item_id')
         
         # 实时获取封面图片
         logger.info(f"准备获取封面: item_id={item_id}, name={item.get('name')}")
-        cover_bytes = self._fetch_cover_image(item_id, width=220, height=310) if item_id else None
+        cover_bytes = self._fetch_cover_image(item_id, width=150, height=220) if item_id else None
         
         if cover_bytes:
             try:
@@ -364,42 +364,42 @@ class ReportImageService:
                 # 调整封面大小为固定尺寸
                 cover = cover.resize((cover_width, cover_height), Image.Resampling.LANCZOS)
                 # 添加圆角
-                cover = self._add_rounded_corners(cover, 8)
+                cover = self._add_rounded_corners(cover, 6)
                 # 粘贴到主图
-                img.paste(cover, (x_offset, y + 8), cover if cover.mode == 'RGBA' else None)
+                img.paste(cover, (x_offset, y + 10), cover if cover.mode == 'RGBA' else None)
                 logger.info(f"封面绘制成功: {item.get('name')}")
             except Exception as e:
                 logger.warning(f"封面图加载失败: {e}")
-                self._draw_placeholder_cover(draw, x_offset, y + 8, cover_width, cover_height)
+                self._draw_placeholder_cover(draw, x_offset, y + 10, cover_width, cover_height)
         else:
             logger.warning(f"封面获取失败，使用占位符: {item.get('name')}")
-            self._draw_placeholder_cover(draw, x_offset, y + 8, cover_width, cover_height)
+            self._draw_placeholder_cover(draw, x_offset, y + 10, cover_width, cover_height)
         
-        x_offset += cover_width + 25
+        x_offset += cover_width + 20
         
         # 内容信息
-        name_font = self._get_font(30, bold=True)
-        type_font = self._get_font(20)
-        stat_font = self._get_font(20)
+        name_font = self._get_font(22, bold=True)  # 调整字号
+        type_font = self._get_font(16)  # 调整字号
+        stat_font = self._get_font(16)  # 调整字号
         
-        # 标题（截断）- 添加描边
+        # 标题（截断）- 调整描边
         name = item['name']
-        if len(name) > 20:  # 调整截断长度
-            name = name[:20] + "..."
+        if len(name) > 15:  # 调整截断长度
+            name = name[:15] + "..."
         self._draw_text_with_stroke(
-            draw, (x_offset, y + 30), name, name_font,
-            fill=self.text_primary, stroke_color=(0, 0, 0), stroke_width=2
+            draw, (x_offset, y + 20), name, name_font,
+            fill=self.text_primary, stroke_color=(0, 0, 0), stroke_width=1
         )
         
         # 类型
         item_type = "电影" if item.get('type') == 'Movie' else "剧集"
-        draw.text((x_offset, y + 75), item_type, fill=self.text_secondary, font=type_font)
+        draw.text((x_offset, y + 55), item_type, fill=self.text_secondary, font=type_font)
         
         # 播放次数和时长
         hours = item.get('hours', 0)
         minutes = int((hours % 1) * 60)
         stat_text = f"{item['play_count']}次播放 · {int(hours)}h{minutes}m"
-        draw.text((x_offset, y + 115), stat_text, fill=self.accent_cyan, font=stat_font)
+        draw.text((x_offset, y + 85), stat_text, fill=self.accent_cyan, font=stat_font)
         
         return y + item_height
     
@@ -440,14 +440,14 @@ class ReportImageService:
     
     def _draw_footer(self, draw: ImageDraw, y: int):
         """绘制页脚"""
-        footer_font = self._get_font(22)
-        footer_text = "New Emby Stats"  # 参考前端
+        footer_font = self._get_font(16)  # 调整字号
+        footer_text = "New Emby Stats"
         
         # 居中绘制
         bbox = draw.textbbox((0, 0), footer_text, font=footer_font)
         text_width = bbox[2] - bbox[0]
         draw.text(
-            ((self.width - text_width) // 2, y + 40),
+            ((self.width - text_width) // 2, y + 30),
             footer_text,
             fill=self.text_secondary,
             font=footer_font
@@ -466,7 +466,7 @@ class ReportImageService:
         draw.text(xy, text, font=font, fill=fill)
     
     def _get_font(self, size: int, bold: bool = False) -> ImageFont:
-        """获取字体 - 优先使用更好的中文字体"""
+        """获取字体 - 优先使用更好的中文字体，支持emoji"""
         try:
             # 检查资源目录中的字体
             if self.res_dir.exists():
@@ -480,15 +480,18 @@ class ReportImageService:
                     # 使用第一个找到的字体
                     return ImageFont.truetype(str(font_files[0]), size)
             
-            # 尝试使用系统中文字体
+            # 尝试使用系统中文字体（支持emoji）
             font_paths = [
-                # Windows
+                # Windows - 使用Segoe UI Emoji支持emoji
+                "C:/Windows/Fonts/seguiemj.ttf",  # Segoe UI Emoji
                 "C:/Windows/Fonts/msyhbd.ttc" if bold else "C:/Windows/Fonts/msyh.ttc",  # 微软雅黑
                 "C:/Windows/Fonts/simhei.ttf",  # 黑体
                 # Linux
+                "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",  # Noto Color Emoji
                 "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
                 "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc" if bold else "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
                 # macOS
+                "/System/Library/Fonts/Apple Color Emoji.ttc",  # Apple Color Emoji
                 "/System/Library/Fonts/PingFang.ttc",
             ]
             
