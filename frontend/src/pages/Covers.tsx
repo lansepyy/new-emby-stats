@@ -236,17 +236,6 @@ export default function Covers() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-bold text-gray-900">选择封面风格</h3>
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={config.use_title}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => setConfig({ ...config, use_title: e.target.checked })}
-                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium text-gray-700">显示标题</span>
-                    </label>
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-6">
@@ -299,8 +288,8 @@ export default function Covers() {
               </div>
             )}
 
-          {/* 单图设置标签页 */}
-          {activeTab === 'single' && (
+            {/* 单图设置标签页 */}
+            {activeTab === 'single' && (
             <div className="space-y-6">
               <h3 className="text-xl font-bold text-gray-900 mb-6">单图风格设置</h3>
               
@@ -371,8 +360,8 @@ export default function Covers() {
             </div>
           )}
 
-          {/* 多图设置标签页 */}
-          {activeTab === 'multi' && (
+            {/* 多图设置标签页 */}
+            {activeTab === 'multi' && (
             <div className="space-y-6">
               <h3 className="text-xl font-bold text-gray-900 mb-6">多图风格设置</h3>
               
@@ -435,8 +424,8 @@ export default function Covers() {
             </div>
           )}
 
-          {/* 动画设置标签页 */}
-          {activeTab === 'animation' && (
+            {/* 动画设置标签页 */}
+            {activeTab === 'animation' && (
             <div className="space-y-6">
               <h3 className="text-xl font-bold text-gray-900 mb-6">动画封面设置</h3>
               
@@ -567,11 +556,11 @@ export default function Covers() {
               </div>
             </div>
           )}
+          </div>
         </div>
-      </div>
 
-      {/* 操作按钮区域 */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+        {/* 操作按钮区域 */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
         <div className="flex gap-4">
           <button
             onClick={handleGenerate}
@@ -669,6 +658,7 @@ export default function Covers() {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }
