@@ -10,6 +10,7 @@ interface Library {
 interface CoverConfig {
   style: 'single_1' | 'single_2' | 'multi_1'
   use_title: boolean
+  title_text: string
   use_blur: boolean
   use_macaron: boolean
   use_film_grain: boolean
@@ -18,6 +19,7 @@ interface CoverConfig {
   color_ratio: number
   font_size_ratio: number
   date_font_size_ratio: number
+  font_family: string
   is_animated: boolean
   frame_count: number
   frame_duration: number
@@ -28,17 +30,66 @@ const STYLE_INFO = {
   single_1: {
     name: '单图 1',
     description: '单张海报，模糊背景',
-    preview: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImJnMSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjY2ZmY7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojYWFhYWZmO3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNjAwIiBmaWxsPSJ1cmwoI2JnMSkiLz48ZyBvcGFjaXR5PSIwLjEiPjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNjAwIiBmaWxsPSJ1cmwoI2JnMSkiIGZpbHRlcj0iYmx1cigzMHB4KSIvPjwvZz48cmVjdCB4PSIxMDAiIHk9IjEwMCIgd2lkdGg9IjIwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiNmZmYiIHJ4PSIxMiIgZmlsdGVyPSJkcm9wLXNoYWRvdygwIDRweCA4cHggcmdiYSgwLDAsMCwwLjMpKSIvPjx0ZXh0IHg9IjIwMCIgeT0iNDUwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmZmYiIGZvbnQtd2VpZ2h0PSJib2xkIj7ljZXlm77po47moLw8L3RleHQ+PC9zdmc+'
+    preview: (
+      <div className="w-full h-full bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 flex flex-col items-center justify-center p-6 relative">
+        <div className="absolute top-4 left-4 text-white">
+          <div className="text-xl font-bold">动画电影</div>
+          <div className="text-xs opacity-80">Animated Films</div>
+        </div>
+        <div className="w-2/3 aspect-[2/3] bg-white rounded-2xl shadow-2xl relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 flex items-center justify-center">
+            <div className="text-white text-4xl font-black opacity-30">🎬</div>
+          </div>
+        </div>
+      </div>
+    )
   },
   single_2: {
     name: '单图 2', 
     description: '单张海报，颜色混合',
-    preview: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImJnMiIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmZjY2OTk7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZmZhYWNjO3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNjAwIiBmaWxsPSJ1cmwoI2JnMikiLz48cmVjdCB4PSI4MCIgeT0iMTAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2ZmZiIgcng9IjEyIiBmaWx0ZXI9ImRyb3Atc2hhZG93KDAgNHB4IDhweCByZ2JhKDAsMCwwLDAuMykpIi8+PHJlY3QgeD0iMTIwIiB5PSIxMDAiIHdpZHRoPSIyMDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjNjZmZmNjIiBvcGFjaXR5PSIwLjYiIHJ4PSIxMiIvPjx0ZXh0IHg9IjIwMCIgeT0iNDUwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmZmYiIGZvbnQtd2VpZ2h0PSJib2xkIj7popzoibLmt7flkIg8L3RleHQ+PC9zdmc+'
+    preview: (
+      <div className="w-full h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex flex-col items-center justify-center p-6 relative">
+        <div className="absolute top-4 left-4 text-white">
+          <div className="text-xl font-bold">动画电影</div>
+          <div className="text-xs opacity-80">Animated Films</div>
+        </div>
+        <div className="w-2/3 aspect-[2/3] bg-white rounded-2xl shadow-2xl relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-400 via-indigo-500 to-purple-600 flex items-center justify-center">
+            <div className="absolute inset-0 bg-gradient-to-tl from-teal-400/50 via-transparent to-transparent"></div>
+            <div className="text-white text-4xl font-black opacity-30">🎭</div>
+          </div>
+        </div>
+      </div>
+    )
   },
   multi_1: {
     name: '多图 1',
     description: '3×3海报拼贴阵列',
-    preview: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImJnMyIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NmZmY2M7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojYWFmZmVlO3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNjAwIiBmaWxsPSJ1cmwoI2JnMykiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg1MCw4MCkiPjxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSI5MCIgaGVpZ2h0PSIxMzUiIGZpbGw9IiNmZjY2NjYiIHJ4PSI4IiBmaWx0ZXI9ImRyb3Atc2hhZG93KDAgMnB4IDRweCByZ2JhKDAsMCwwLDAuMikpIi8+PHJlY3QgeD0iMTA1IiB5PSIwIiB3aWR0aD0iOTAiIGhlaWdodD0iMTM1IiBmaWxsPSIjNjZmZjY2IiByeD0iOCIgZmlsdGVyPSJkcm9wLXNoYWRvdygwIDJweCA0cHggcmdiYSgwLDAsMCwwLjIpKSIvPjxyZWN0IHg9IjIxMCIgeT0iMCIgd2lkdGg9IjkwIiBoZWlnaHQ9IjEzNSIgZmlsbD0iIzY2NjZmZiIgcng9IjgiIGZpbHRlcj0iZHJvcC1zaGFkb3coMCAycHggNHB4IHJnYmEoMCwwLDAsMC4yKSkiLz48cmVjdCB4PSIwIiB5PSIxNTAiIHdpZHRoPSI5MCIgaGVpZ2h0PSIxMzUiIGZpbGw9IiNmZmNjNjYiIHJ4PSI4IiBmaWx0ZXI9ImRyb3Atc2hhZG93KDAgMnB4IDRweCByZ2JhKDAsMCwwLDAuMikpIi8+PHJlY3QgeD0iMTA1IiB5PSIxNTAiIHdpZHRoPSI5MCIgaGVpZ2h0PSIxMzUiIGZpbGw9IiNmZjY2Y2MiIHJ4PSI4IiBmaWx0ZXI9ImRyb3Atc2hhZG93KDAgMnB4IDRweCByZ2JhKDAsMCwwLDAuMikpIi8+PHJlY3QgeD0iMjEwIiB5PSIxNTAiIHdpZHRoPSI5MCIgaGVpZ2h0PSIxMzUiIGZpbGw9IiM2NmZmY2MiIHJ4PSI4IiBmaWx0ZXI9ImRyb3Atc2hhZG93KDAgMnB4IDRweCByZ2JhKDAsMCwwLDAuMikpIi8+PHJlY3QgeD0iMCIgeT0iMzAwIiB3aWR0aD0iOTAiIGhlaWdodD0iMTM1IiBmaWxsPSIjY2M2NmZmIiByeD0iOCIgZmlsdGVyPSJkcm9wLXNoYWRvdygwIDJweCA0cHggcmdiYSgwLDAsMCwwLjIpKSIvPjxyZWN0IHg9IjEwNSIgeT0iMzAwIiB3aWR0aD0iOTAiIGhlaWdodD0iMTM1IiBmaWxsPSIjZmY5OTY2IiByeD0iOCIgZmlsdGVyPSJkcm9wLXNoYWRvdygwIDJweCA0cHggcmdiYSgwLDAsMCwwLjIpKSIvPjxyZWN0IHg9IjIxMCIgeT0iMzAwIiB3aWR0aD0iOTAiIGhlaWdodD0iMTM1IiBmaWxsPSIjNjZjY2ZmIiByeD0iOCIgZmlsdGVyPSJkcm9wLXNoYWRvdygwIDJweCA0cHggcmdiYSgwLDAsMCwwLjIpKSIvPjwvZz48dGV4dCB4PSIyMDAiIHk9IjU1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjZmZmIiBmb250LXdlaWdodD0iYm9sZCI+5Yqo55S754S15b2xPC90ZXh0Pjwvc3ZnPg=='
+    preview: (
+      <div className="w-full h-full bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 flex flex-col items-center justify-center p-5 relative">
+        <div className="absolute top-3 left-3 text-white">
+          <div className="text-lg font-bold">动画电影</div>
+          <div className="text-xs opacity-80">Films</div>
+        </div>
+        <div className="grid grid-cols-3 gap-1.5 w-full h-full p-2">
+          {[
+            { bg: 'from-red-400 to-pink-600', emoji: '🎬' },
+            { bg: 'from-yellow-400 to-orange-600', emoji: '🎪' },
+            { bg: 'from-green-400 to-emerald-600', emoji: '🎨' },
+            { bg: 'from-blue-400 to-cyan-600', emoji: '🎭' },
+            { bg: 'from-purple-400 to-pink-600', emoji: '🎵' },
+            { bg: 'from-indigo-400 to-purple-600', emoji: '🎸' },
+            { bg: 'from-pink-400 to-rose-600', emoji: '🎺' },
+            { bg: 'from-orange-400 to-red-600', emoji: '🎻' },
+            { bg: 'from-teal-400 to-cyan-600', emoji: '🎹' }
+          ].map((item, i) => (
+            <div key={i} className={`aspect-[2/3] bg-gradient-to-br ${item.bg} rounded shadow-lg flex items-center justify-center text-2xl`}>
+              <span className="opacity-40">{item.emoji}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 }
 
@@ -53,6 +104,7 @@ export default function Covers() {
   const [config, setConfig] = useState<CoverConfig>({
     style: 'multi_1',
     use_title: true,
+    title_text: '',
     use_blur: true,
     use_macaron: true,
     use_film_grain: true,
@@ -61,6 +113,7 @@ export default function Covers() {
     color_ratio: 0.7,
     font_size_ratio: 0.12,
     date_font_size_ratio: 0.05,
+    font_family: 'SourceHanSansCN-Bold.otf',
     is_animated: false,
     frame_count: 30,
     frame_duration: 50,
@@ -238,6 +291,84 @@ export default function Covers() {
                   <h3 className="text-xl font-bold text-gray-900">选择封面风格</h3>
                 </div>
 
+                {/* 封面标题设置 */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-200 mb-6">
+                  <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                    封面标题配置
+                  </h4>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="flex items-center gap-3 cursor-pointer mb-3">
+                        <input
+                          type="checkbox"
+                          checked={config.use_title}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => setConfig({ ...config, use_title: e.target.checked })}
+                          className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-sm font-semibold text-gray-800">显示封面标题</span>
+                      </label>
+                      
+                      {config.use_title && (
+                        <div className="space-y-4 pl-8">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              标题文本 <span className="text-gray-500 text-xs">(留空则使用媒体库名称)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={config.title_text}
+                              onChange={(e: ChangeEvent<HTMLInputElement>) => setConfig({ ...config, title_text: e.target.value })}
+                              placeholder="例如：动画电影、恐怖片..."
+                              className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">字体选择</label>
+                            <select
+                              value={config.font_family}
+                              onChange={(e: ChangeEvent<HTMLSelectElement>) => setConfig({ ...config, font_family: e.target.value })}
+                              className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            >
+                              <option value="SourceHanSansCN-Bold.otf">思源黑体 Bold</option>
+                              <option value="SourceHanSansCN-Regular.otf">思源黑体 Regular</option>
+                              <option value="SourceHanSerifCN-Bold.otf">思源宋体 Bold</option>
+                              <option value="NotoSansSC-Bold.otf">Noto Sans SC Bold</option>
+                            </select>
+                          </div>
+                          
+                          <div>
+                            <label className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">字体大小</span>
+                              <span className="text-sm font-bold text-blue-600">{(config.font_size_ratio * 100).toFixed(0)}%</span>
+                            </label>
+                            <input
+                              type="range"
+                              min="0.05"
+                              max="0.25"
+                              step="0.01"
+                              value={config.font_size_ratio}
+                              onChange={(e: ChangeEvent<HTMLInputElement>) => setConfig({ ...config, font_size_ratio: parseFloat(e.target.value) })}
+                              className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                              style={{
+                                background: `linear-gradient(to right, rgb(59, 130, 246) 0%, rgb(59, 130, 246) ${((config.font_size_ratio - 0.05) / 0.2) * 100}%, #e5e7eb ${((config.font_size_ratio - 0.05) / 0.2) * 100}%, #e5e7eb 100%)`
+                              }}
+                            />
+                            <div className="flex justify-between text-xs text-gray-500 mt-1">
+                              <span>较小 (5%)</span>
+                              <span>较大 (25%)</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-3 gap-6">
                   {(['single_1', 'single_2', 'multi_1'] as const).map((style) => (
                     <div
@@ -251,11 +382,7 @@ export default function Covers() {
                     >
                       {/* 预览图 */}
                       <div className="aspect-[2/3] bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
-                        <img 
-                          src={STYLE_INFO[style].preview} 
-                          alt={STYLE_INFO[style].name}
-                          className="w-full h-full object-cover"
-                        />
+                        {STYLE_INFO[style].preview}
                         {config.style === style && (
                           <div className="absolute inset-0 bg-blue-600 bg-opacity-10 backdrop-blur-[1px]"></div>
                         )}
@@ -429,6 +556,39 @@ export default function Covers() {
             <div className="space-y-6">
               <h3 className="text-xl font-bold text-gray-900 mb-6">动画封面设置</h3>
               
+              {/* 动画预览卡片 */}
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                <div className="bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 rounded-2xl p-6 aspect-[2/3] relative overflow-hidden group">
+                  <div className="absolute top-4 left-4 text-white z-10">
+                    <div className="text-lg font-bold">动画封面</div>
+                    <div className="text-xs opacity-80">GIF 格式</div>
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-1/2 aspect-[2/3] bg-white/20 backdrop-blur-sm rounded-xl shadow-2xl animate-pulse"></div>
+                  </div>
+                  <div className="absolute bottom-4 right-4 text-white text-xs bg-black/30 px-3 py-1 rounded-full">
+                    ▶️ 动态播放
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-2xl p-6 aspect-[2/3] relative overflow-hidden">
+                  <div className="absolute top-4 left-4 text-white z-10">
+                    <div className="text-lg font-bold">动画封面</div>
+                    <div className="text-xs opacity-80">WebP 格式</div>
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="grid grid-cols-3 gap-1 w-3/4 h-3/4 animate-pulse">
+                      {[1,2,3,4,5,6,7,8,9].map(i => (
+                        <div key={i} className={`aspect-[2/3] bg-white/20 backdrop-blur-sm rounded shadow`}></div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="absolute bottom-4 right-4 text-white text-xs bg-black/30 px-3 py-1 rounded-full">
+                    ⚡ 体积更小
+                  </div>
+                </div>
+              </div>
+              
               <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-2xl p-6 mb-6 shadow-lg">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center flex-shrink-0">
@@ -574,8 +734,11 @@ export default function Covers() {
               </>
             ) : (
               <>
-                <Play className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                <span>生成封面</span>
+                <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/>
+                </svg>
+                <span>生成预览</span>
               </>
             )}
           </button>
@@ -593,7 +756,7 @@ export default function Covers() {
             ) : (
               <>
                 <Upload className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                <span>上传到 Emby</span>
+                <span>应用到 Emby</span>
               </>
             )}
           </button>
@@ -602,7 +765,18 @@ export default function Covers() {
         {(!selectedLibrary) && (
           <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
             <p className="text-sm text-yellow-800 text-center">
-              <strong>提示：</strong>请先选择一个媒体库
+              <strong>💡 提示：</strong>请先选择媒体库，点击"生成预览"查看效果，确认无误后再"应用到 Emby"
+            </p>
+          </div>
+        )}
+        
+        {generatedImage && (
+          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl">
+            <p className="text-sm text-green-800 text-center flex items-center justify-center gap-2">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+              </svg>
+              <strong>预览已生成！</strong>请检查下方预览效果，确认无误后点击"应用到 Emby"
             </p>
           </div>
         )}
@@ -610,24 +784,59 @@ export default function Covers() {
 
       {/* 预览区域 */}
       {generatedImage && (
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 mt-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">封面预览</h2>
-          <div className="flex justify-center">
-            <div className="relative group">
-              <img
-                src={generatedImage}
-                alt="Generated Cover"
-                className="max-w-md rounded-xl shadow-2xl ring-4 ring-blue-100 transition-transform group-hover:scale-105"
-              />
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-6">
-                <a
-                  href={generatedImage}
-                  download="library_cover.jpg"
-                  className="px-6 py-3 bg-white text-gray-900 rounded-lg font-semibold shadow-lg hover:bg-gray-100 transition-colors flex items-center gap-2"
-                >
-                  <Download className="w-5 h-5" />
-                  下载封面
-                </a>
+        <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-2xl border-2 border-blue-200 p-8 mt-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl"></div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/>
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">封面预览效果</h2>
+                  <p className="text-sm text-gray-500">请仔细检查封面效果，确认无误后应用到 Emby</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex flex-col items-center gap-6">
+              <div className="relative group">
+                <div className="absolute -inset-4 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-2xl opacity-20 blur-xl group-hover:opacity-30 transition-opacity"></div>
+                <img
+                  src={generatedImage}
+                  alt="Generated Cover"
+                  className="relative max-w-md rounded-xl shadow-2xl ring-4 ring-white transition-all duration-300 group-hover:scale-[1.02] group-hover:shadow-3xl"
+                />
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-6">
+                  <a
+                    href={generatedImage}
+                    download="library_cover.jpg"
+                    className="px-6 py-3 bg-white text-gray-900 rounded-lg font-semibold shadow-lg hover:bg-gray-100 transition-colors flex items-center gap-2"
+                  >
+                    <Download className="w-5 h-5" />
+                    下载预览图
+                  </a>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4 w-full max-w-2xl">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 text-center border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-600 mb-1">{STYLE_INFO[config.style].name}</div>
+                  <div className="text-xs text-gray-600">当前风格</div>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 text-center border border-purple-200">
+                  <div className="text-2xl font-bold text-purple-600 mb-1">{config.is_animated ? config.output_format.toUpperCase() : 'JPG'}</div>
+                  <div className="text-xs text-gray-600">输出格式</div>
+                </div>
+                <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-lg p-4 text-center border border-pink-200">
+                  <div className="text-2xl font-bold text-pink-600 mb-1">{config.use_title ? '✓' : '✗'}</div>
+                  <div className="text-xs text-gray-600">显示标题</div>
+                </div>
               </div>
             </div>
           </div>
