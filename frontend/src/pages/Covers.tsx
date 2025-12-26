@@ -1,4 +1,4 @@
-import { useState, useEffect, ChangeEvent } from 'react'
+import { useState, useEffect, type ChangeEvent } from 'react'
 import { Image, Download, Upload, Loader2 } from 'lucide-react'
 
 interface Library {
