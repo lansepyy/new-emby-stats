@@ -1,0 +1,98 @@
+name: Build Docker Image
+
+on:
+  push:
+    branches:
+      - beta
+      - main
+    tags:
+      - 'beta-*'
+      - 'v*'
+  pull_request:
+    branches:
+      - beta
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: new-emby-stats
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 计算下一个beta版本号
+        id: version
+        if: github.ref == 'refs/heads/beta'
+        run: |
+          # 获取所有 beta-* 标签，提取数字，找到最大值
+          LATEST=$(git tag -l 'beta-*' | sed 's/beta-//' | sort -n | tail -1)
+          if [ -z "$LATEST" ]; then
+            NEXT=1
+          else
+            NEXT=$((LATEST + 1))
+          fi
+          echo "next=$NEXT" >> $GITHUB_OUTPUT
+          echo "下一个beta版本: beta-$NEXT"
+
+      - name: 设置Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 登录GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 提取Docker元数据
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+            ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=beta-${{ steps.version.outputs.next }},enable=${{ github.ref == 'refs/heads/beta' }}
+
+      - name: 构建并推送Docker镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 创建Git标签
+        if: github.ref == 'refs/heads/beta' && github.event_name != 'pull_request'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag beta-${{ steps.version.outputs.next }}
+          git push origin beta-${{ steps.version.outputs.next }}
+
+      - name: 镜像摘要
+        run: echo ${{ steps.meta.outputs.digest }}

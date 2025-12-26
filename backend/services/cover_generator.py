@@ -1,0 +1,878 @@
+"""
+媒体库封面生成服务
+整合 jellyfin-library-poster 和 MoviePilot-Plugins 的封面生成功能
+"""
+import os
+import io
+import math
+import random
+import colorsys
+import logging
+from pathlib import Path
+from typing import Dict, Any, List, Optional, Tuple
+from collections import Counter
+from datetime import datetime
+
+import httpx
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
+import numpy as np
+
+from config import settings
+from services.emby import EmbyService
+
+logger = logging.getLogger(__name__)
+
+
+# ==================== 通用工具函数 ====================
+
+def is_not_black_white_gray_near(color, threshold=20):
+    """判断颜色既不是黑、白、灰，也不是接近黑、白。"""
+    r, g, b = color
+    if (r < threshold and g < threshold and b < threshold) or \
+       (r > 255 - threshold and g > 255 - threshold and b > 255 - threshold):
+        return False
+    gray_diff_threshold = 10
+    if abs(r - g) < gray_diff_threshold and abs(g - b) < gray_diff_threshold and abs(r - b) < gray_diff_threshold:
+        return False
+    return True
+
+
+def rgb_to_hsv(color):
+    """将 RGB 颜色转换为 HSV 颜色。"""
+    r, g, b = [x / 255.0 for x in color]
+    return colorsys.rgb_to_hsv(r, g, b)
+
+
+def hsv_to_rgb(h, s, v):
+    """将 HSV 颜色转换为 RGB 颜色。"""
+    r, g, b = colorsys.hsv_to_rgb(h, s, v)
+    return (int(r * 255), int(g * 255), int(b * 255))
+
+
+def adjust_color_macaron(color):
+    """调整颜色使其更接近马卡龙风格"""
+    h, s, v = rgb_to_hsv(color)
+    
+    target_saturation_range = (0.3, 0.7)
+    target_value_range = (0.6, 0.85)
+    
+    if s < target_saturation_range[0]:
+        s = target_saturation_range[0]
+    elif s > target_saturation_range[1]:
+        s = target_saturation_range[1]
+    
+    if v < target_value_range[0]:
+        v = target_value_range[0]
+    elif v > target_value_range[1]:
+        v = target_value_range[1]
+    
+    return hsv_to_rgb(h, s, v)
+
+
+def find_dominant_macaron_colors(image, num_colors=5):
+    """从图像中提取主要颜色并调整为马卡龙风格"""
+    img = image.copy()
+    img.thumbnail((150, 150))
+    img = img.convert('RGB')
+    pixels = list(img.getdata())
+    
+    filtered_pixels = [p for p in pixels if is_not_black_white_gray_near(p)]
+    if not filtered_pixels:
+        return []
+    
+    color_counter = Counter(filtered_pixels)
+    candidate_colors = color_counter.most_common(num_colors * 5)
+    
+    macaron_colors = []
+    min_color_distance = 0.15
+    
+    def color_distance(color1, color2):
+        h1, s1, v1 = rgb_to_hsv(color1)
+        h2, s2, v2 = rgb_to_hsv(color2)
+        h_dist = min(abs(h1 - h2), 1 - abs(h1 - h2))
+        return h_dist * 5 + abs(s1 - s2) + abs(v1 - v2)
+    
+    for color, _ in candidate_colors:
+        adjusted_color = adjust_color_macaron(color)
+        if not any(color_distance(adjusted_color, existing) < min_color_distance for existing in macaron_colors):
+            macaron_colors.append(adjusted_color)
+            if len(macaron_colors) >= num_colors:
+                break
+    
+    return macaron_colors
+
+
+def add_film_grain(image, intensity=0.05):
+    """添加胶片颗粒效果"""
+    img_array = np.array(image)
+    noise = np.random.normal(0, intensity * 255, img_array.shape)
+    img_array = img_array + noise
+    img_array = np.clip(img_array, 0, 255).astype(np.uint8)
+    return Image.fromarray(img_array)
+
+
+def add_shadow(img, offset=(5, 5), shadow_color=(0, 0, 0, 100), blur_radius=3):
+    """给图片添加阴影效果"""
+    shadow_width = img.width + offset[0] + blur_radius * 2
+    shadow_height = img.height + offset[1] + blur_radius * 2
+    
+    shadow = Image.new("RGBA", (shadow_width, shadow_height), (0, 0, 0, 0))
+    shadow_layer = Image.new("RGBA", img.size, shadow_color)
+    shadow.paste(shadow_layer, (blur_radius + offset[0], blur_radius + offset[1]))
+    shadow = shadow.filter(ImageFilter.GaussianBlur(blur_radius))
+    
+    result = Image.new("RGBA", shadow.size, (0, 0, 0, 0))
+    result.paste(img, (blur_radius, blur_radius), img if img.mode == "RGBA" else None)
+    shadow_img = Image.alpha_composite(shadow, result)
+    
+    return shadow_img
+
+
+def create_gradient_background(width, height, color=None):
+    """创建渐变背景"""
+    def is_mid_bright_hsl(input_rgb, min_l=0.3, max_l=0.7):
+        r, g, b = input_rgb[:3] if len(input_rgb) >= 3 else (128, 128, 128)
+        r1, g1, b1 = r/255.0, g/255.0, b/255.0
+        h, l, s = colorsys.rgb_to_hls(r1, g1, b1)
+        return min_l <= l <= max_l
+    
+    selected_color = None
+    
+    if isinstance(color, list) and len(color) > 0:
+        for c in color[:10]:
+            if is_mid_bright_hsl(c):
+                selected_color = c[:3] if len(c) >= 3 else c
+                break
+    
+    if selected_color is None:
+        h = random.uniform(0, 1)
+        s = random.uniform(0.4, 0.7)
+        l = random.uniform(0.45, 0.65)
+        selected_color = tuple(int(x * 255) for x in colorsys.hls_to_rgb(h, l, s))
+    
+    base_color = selected_color
+    left_color = tuple(max(0, int(c * 0.7)) for c in base_color)
+    right_color = base_color
+    
+    gradient = Image.new('RGB', (width, height))
+    draw = ImageDraw.Draw(gradient)
+    
+    for x in range(width):
+        ratio = x / width
+        r = int(left_color[0] * (1 - ratio) + right_color[0] * ratio)
+        g = int(left_color[1] * (1 - ratio) + right_color[1] * ratio)
+        b = int(left_color[2] * (1 - ratio) + right_color[2] * ratio)
+        draw.line([(x, 0), (x, height)], fill=(r, g, b))
+    
+    return gradient
+
+
+# ==================== 封面生成器类 ====================
+
+class CoverGeneratorService:
+    """封面生成服务 - 整合多种风格"""
+    
+    # 海报生成配置
+    POSTER_CONFIG = {
+        "ROWS": 3,
+        "COLS": 3,
+        "MARGIN": 22,
+        "CORNER_RADIUS": 46,
+        "ROTATION_ANGLE": -15.8,
+        "START_X": 835,
+        "START_Y": -362,
+        "COLUMN_SPACING": 100,
+        "CELL_WIDTH": 410,
+        "CELL_HEIGHT": 610,
+        "CANVAS_WIDTH": 1920,
+        "CANVAS_HEIGHT": 1080,
+    }
+    
+    def __init__(self):
+        self.emby_service = EmbyService()
+        self.cache_dir = Path("/tmp/cover_cache")
+        self.cache_dir.mkdir(exist_ok=True, parents=True)
+        
+        # 字体路径
+        self.font_dir = Path(__file__).parent.parent.parent / "res" / "fonts"
+        self.font_dir.mkdir(exist_ok=True, parents=True)
+    
+    async def get_library_list(self) -> List[Dict[str, Any]]:
+        """获取媒体库列表"""
+        try:
+            api_key = await self.emby_service.get_api_key()
+            if not api_key:
+                logger.error("无法获取API密钥")
+                return []
+            
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.get(
+                    f"{settings.EMBY_URL}/Library/MediaFolders",
+                    headers={"Authorization": f'MediaBrowser Token="{api_key}"'}
+                )
+                
+                if resp.status_code == 200:
+                    data = resp.json()
+                    libraries = []
+                    if "Items" in data:
+                        for item in data["Items"]:
+                            if "Id" in item and "Name" in item:
+                                libraries.append({
+                                    "id": item["Id"],
+                                    "name": item["Name"],
+                                    "type": item.get("CollectionType", "unknown")
+                                })
+                    return libraries
+        except Exception as e:
+            logger.error(f"获取媒体库列表失败: {e}")
+        
+        return []
+    
+    async def get_library_items(self, library_id: str, limit: int = 50, sort_by: str = "DateCreated") -> List[Dict[str, Any]]:
+        """获取媒体库中的项目"""
+        try:
+            api_key = await self.emby_service.get_api_key()
+            user_id = await self.emby_service.get_user_id()
+            
+            if not api_key or not user_id:
+                return []
+            
+            # 支持随机排序
+            if sort_by == "Random":
+                random_seed = random.randint(1000000, 9999999)
+                sort_by = f"Random&RandomSeed={random_seed}"
+            
+            url = f"{settings.EMBY_URL}/Users/{user_id}/Items"
+            params = {
+                "ParentId": library_id,
+                "Recursive": "true",
+                "SortBy": sort_by,
+                "SortOrder": "Descending",
+                "IncludeItemTypes": "Movie,Series,Audio,Music,Game,Book,MusicVideo,BoxSet",
+                "Limit": limit,
+                "Fields": "PrimaryImageAspectRatio,ImageTags",
+                "api_key": api_key
+            }
+            
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.get(url, params=params)
+                
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return data.get("Items", [])
+        except Exception as e:
+            logger.error(f"获取媒体库项目失败: {e}")
+        
+        return []
+    
+    async def download_poster(self, item_id: str, item_name: str) -> Optional[bytes]:
+        """下载单个海报"""
+        try:
+            api_key = await self.emby_service.get_api_key()
+            if not api_key:
+                return None
+            
+            # 尝试获取主图
+            url = f"{settings.EMBY_URL}/Items/{item_id}/Images/Primary"
+            params = {"api_key": api_key, "maxWidth": 500}
+            
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.get(url, params=params)
+                if resp.status_code == 200:
+                    return resp.content
+        except Exception as e:
+            logger.error(f"下载海报失败 {item_name}: {e}")
+        
+        return None
+    
+    def _get_font_path(self) -> Path:
+        """获取字体文件路径"""
+        # 优先使用项目字体
+        font_candidates = [
+            self.font_dir / "SourceHanSansSC-Bold.otf",
+            self.font_dir / "SourceHanSansSC-Regular.otf",
+            Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"),
+            Path("/System/Library/Fonts/PingFang.ttc"),
+            Path("C:\\Windows\\Fonts\\msyh.ttc"),
+        ]
+        
+        for font_path in font_candidates:
+            if font_path.exists():
+                return font_path
+        
+        # 返回默认字体路径（即使不存在，PIL会使用默认字体）
+        return self.font_dir / "default.ttf"
+    
+    async def _fetch_posters(self, library_id: str, count: int = 9) -> List[Image.Image]:
+        """获取海报图片列表"""
+        items = await self.get_library_items(library_id, limit=count * 2)
+        if not items:
+            logger.warning(f"未获取到媒体库 {library_id} 的项目")
+            return []
+        
+        posters = []
+        for item in items[:count]:
+            poster_data = await self.download_poster(item["Id"], item["Name"])
+            if poster_data:
+                try:
+                    img = Image.open(io.BytesIO(poster_data))
+                    posters.append(img)
+                    if len(posters) >= count:
+                        break
+                except Exception as e:
+                    logger.error(f"打开海报失败: {e}")
+        
+        return posters
+    
+    def draw_text_with_shadow(
+        self,
+        image: Image.Image,
+        text: str,
+        position: Tuple[int, int],
+        font: ImageFont.FreeTypeFont,
+        fill_color: Tuple[int, int, int, int] = (255, 255, 255, 255),
+        shadow_color: Tuple[int, int, int, int] = (0, 0, 0, 180),
+        shadow_offset: Tuple[int, int] = (2, 2)
+    ) -> Image.Image:
+        """在图像上绘制带阴影的文字"""
+        img_copy = image.copy()
+        draw = ImageDraw.Draw(img_copy)
+        
+        # 绘制阴影
+        shadow_pos = (position[0] + shadow_offset[0], position[1] + shadow_offset[1])
+        draw.text(shadow_pos, text, font=font, fill=shadow_color)
+        
+        # 绘制文字
+        draw.text(position, text, font=font, fill=fill_color)
+        
+        return img_copy
+    
+    async def generate_style_multi(
+        self,
+        library_id: str,
+        library_name: str,
+        title: str = "",
+        subtitle: str = "",
+        poster_count: int = 9,
+        use_blur: bool = False,
+        use_macaron: bool = True
+    ) -> Optional[bytes]:
+        """生成多图拼贴风格封面（类似 jellyfin-library-poster）"""
+        logger.info(f"开始生成多图封面: {library_name}")
+        
+        # 获取海报
+        items = await self.get_library_items(library_id, limit=poster_count * 2)
+        if not items:
+            logger.error("未获取到任何项目")
+            return None
+        
+        # 下载海报
+        posters = []
+        for item in items[:poster_count]:
+            poster_data = await self.download_poster(item["Id"], item["Name"])
+            if poster_data:
+                try:
+                    img = Image.open(io.BytesIO(poster_data))
+                    posters.append(img)
+                except Exception as e:
+                    logger.error(f"打开海报失败: {e}")
+        
+        if len(posters) < 3:
+            logger.error("海报数量不足")
+            return None
+        
+        # 配置
+        cfg = self.POSTER_CONFIG
+        canvas_width = cfg["CANVAS_WIDTH"]
+        canvas_height = cfg["CANVAS_HEIGHT"]
+        
+        # 提取主色调
+        main_colors = find_dominant_macaron_colors(posters[0]) if use_macaron else []
+        
+        # 创建背景
+        background = create_gradient_background(canvas_width, canvas_height, main_colors)
+        
+        if use_blur:
+            background = background.filter(ImageFilter.GaussianBlur(50))
+        
+        canvas = background.convert("RGBA")
+        
+        # 生成海报列
+        cols = cfg["COLS"]
+        rows = cfg["ROWS"]
+        items_per_col = rows
+        
+        for col_idx in range(cols):
+            start_idx = col_idx * items_per_col
+            end_idx = min(start_idx + items_per_col, len(posters))
+            col_posters = posters[start_idx:end_idx]
+            
+            if not col_posters:
+                break
+            
+            # 创建列图片
+            col_image = self._create_column_image(col_posters, cfg)
+            
+            # 旋转
+            col_image = col_image.rotate(
+                cfg["ROTATION_ANGLE"],
+                expand=True,
+                resample=Image.BICUBIC
+            )
+            
+            # 计算位置
+            x = cfg["START_X"] + col_idx * cfg["COLUMN_SPACING"]
+            y = cfg["START_Y"]
+            
+            # 粘贴
+            canvas.paste(col_image, (x, y), col_image)
+        
+        # 添加标题
+        if title or subtitle:
+            canvas = self._add_title_to_canvas(canvas, title or library_name, subtitle)
+        
+        # 转换为字节
+        output = io.BytesIO()
+        canvas.convert("RGB").save(output, format="PNG", quality=95)
+        output.seek(0)
+        
+        logger.info(f"封面生成完成: {library_name}")
+        return output.getvalue()
+    
+    def _create_column_image(self, posters: List[Image.Image], cfg: Dict) -> Image.Image:
+        """创建列图片"""
+        cell_width = cfg["CELL_WIDTH"]
+        cell_height = cfg["CELL_HEIGHT"]
+        margin = cfg["MARGIN"]
+        corner_radius = cfg["CORNER_RADIUS"]
+        
+        rows = len(posters)
+        col_height = rows * cell_height + (rows - 1) * margin
+        
+        shadow_extra = 40
+        col_image = Image.new(
+            "RGBA",
+            (cell_width + shadow_extra, col_height + shadow_extra),
+            (0, 0, 0, 0)
+        )
+        
+        for idx, poster in enumerate(posters):
+            # 调整大小
+            resized = poster.resize((cell_width, cell_height), Image.LANCZOS)
+            
+            # 圆角
+            if corner_radius > 0:
+                mask = Image.new("L", (cell_width, cell_height), 0)
+                draw = ImageDraw.Draw(mask)
+                draw.rounded_rectangle(
+                    [(0, 0), (cell_width, cell_height)],
+                    radius=corner_radius,
+                    fill=255
+                )
+                rounded = Image.new("RGBA", resized.size, (0, 0, 0, 0))
+                rounded.paste(resized, (0, 0), mask)
+                resized = rounded
+            
+            # 添加阴影
+            with_shadow = add_shadow(
+                resized,
+                offset=(20, 20),
+                shadow_color=(0, 0, 0, 255),
+                blur_radius=20
+            )
+            
+            # 计算位置
+            y_pos = idx * (cell_height + margin)
+            col_image.paste(with_shadow, (0, y_pos), with_shadow)
+        
+        return col_image
+    
+    def _add_title_to_canvas(
+        self,
+        canvas: Image.Image,
+        title: str,
+        subtitle: str = ""
+    ) -> Image.Image:
+        """在画布上添加标题"""
+        draw = ImageDraw.Draw(canvas)
+        
+        try:
+            # 尝试加载自定义字体
+            title_font = ImageFont.truetype(str(self.font_dir / "title.ttf"), 80)
+            subtitle_font = ImageFont.truetype(str(self.font_dir / "subtitle.ttf"), 50)
+        except:
+            # 使用默认字体
+            title_font = ImageFont.load_default()
+            subtitle_font = ImageFont.load_default()
+        
+        # 绘制标题
+        title_pos = (100, 100)
+        
+        # 阴影
+        shadow_offset = (4, 4)
+        draw.text(
+            (title_pos[0] + shadow_offset[0], title_pos[1] + shadow_offset[1]),
+            title,
+            font=title_font,
+            fill=(0, 0, 0, 180)
+        )
+        # 文字
+        draw.text(title_pos, title, font=title_font, fill=(255, 255, 255, 255))
+        
+        # 副标题
+        if subtitle:
+            subtitle_pos = (100, 200)
+            draw.text(
+                (subtitle_pos[0] + shadow_offset[0], subtitle_pos[1] + shadow_offset[1]),
+                subtitle,
+                font=subtitle_font,
+                fill=(0, 0, 0, 180)
+            )
+            draw.text(subtitle_pos, subtitle, font=subtitle_font, fill=(200, 200, 200, 255))
+        
+        return canvas
+    
+    async def generate_style_single(
+        self,
+        library_id: str,
+        library_name: str,
+        title: str = "",
+        use_film_grain: bool = True,
+        blur_size: int = 50,
+        color_ratio: float = 0.8
+    ) -> Optional[bytes]:
+        """生成单图马卡龙风格封面"""
+        logger.info(f"开始生成单图马卡龙封面: {library_name}")
+        
+        # 获取一个随机项目作为主图
+        items = await self.get_library_items(library_id, limit=1, sort_by="Random")
+        if not items:
+            return None
+        
+        poster_data = await self.download_poster(items[0]["Id"], items[0]["Name"])
+        if not poster_data:
+            return None
+        
+        try:
+            poster_img = Image.open(io.BytesIO(poster_data))
+        except:
+            return None
+        
+        # 画布尺寸
+        canvas_size = (1920, 1080)
+        
+        # 提取马卡龙颜色
+        macaron_colors = find_dominant_macaron_colors(poster_img)
+        if not macaron_colors:
+            macaron_colors = [(200, 150, 200)]
+        
+        # 创建背景
+        bg_color = macaron_colors[0]
+        canvas = Image.new('RGB', canvas_size, bg_color)
+        
+        # 添加模糊的海报作为背景
+        bg_poster = poster_img.copy()
+        bg_poster = bg_poster.resize(canvas_size, Image.LANCZOS)
+        bg_poster = bg_poster.filter(ImageFilter.GaussianBlur(blur_size))
+        
+        # 混合
+        canvas = Image.blend(canvas, bg_poster, color_ratio)
+        
+        # 添加胶片颗粒
+        if use_film_grain:
+            canvas = add_film_grain(canvas, intensity=0.05)
+        
+        # 添加标题
+        draw = ImageDraw.Draw(canvas)
+        try:
+            font = ImageFont.truetype(str(self.font_dir / "title.ttf"), 100)
+        except:
+            font = ImageFont.load_default()
+        
+        text = title or library_name
+        # 简单居中
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_x = (canvas_size[0] - text_width) // 2
+        text_y = canvas_size[1] - 200
+        
+        # 阴影
+        draw.text((text_x + 3, text_y + 3), text, font=font, fill=(0, 0, 0, 128))
+        # 文字
+        draw.text((text_x, text_y), text, font=font, fill=(255, 255, 255, 255))
+        
+        # 转换为字节
+        output = io.BytesIO()
+        canvas.save(output, format="PNG", quality=95)
+        output.seek(0)
+        
+        logger.info(f"单图封面生成完成: {library_name}")
+        return output.getvalue()
+    
+    def create_extended_column(self, images: List[Image.Image], column_index: int) -> Image.Image:
+        """
+        创建扩展列用于动画循环
+        将海报列表垂直排列两次，形成无缝循环效果
+        
+        Args:
+            images: 海报图片列表
+            column_index: 列索引(0-2)
+            
+        Returns:
+            扩展后的列图像
+        """
+        if not images:
+            return Image.new('RGB', (200, 600))
+        
+        # 每列包含的海报数量
+        posters_per_column = 3
+        
+        # 计算该列需要的海报
+        start_idx = column_index * posters_per_column
+        column_posters = []
+        
+        for i in range(posters_per_column):
+            idx = (start_idx + i) % len(images)
+            column_posters.append(images[idx])
+        
+        # 统一海报尺寸
+        target_width = 200
+        target_height = 300
+        resized_posters = []
+        for poster in column_posters:
+            resized = poster.copy()
+            resized.thumbnail((target_width, target_height), Image.Resampling.LANCZOS)
+            
+            # 创建固定大小的画布并居中粘贴
+            canvas = Image.new('RGB', (target_width, target_height), (0, 0, 0))
+            x_offset = (target_width - resized.width) // 2
+            y_offset = (target_height - resized.height) // 2
+            canvas.paste(resized, (x_offset, y_offset))
+            resized_posters.append(canvas)
+        
+        # 创建扩展列：垂直重复两次以实现无缝循环
+        column_height = target_height * posters_per_column
+        extended_height = column_height * 2
+        
+        extended_column = Image.new('RGB', (target_width, extended_height))
+        
+        # 第一遍：正常排列
+        for i, poster in enumerate(resized_posters):
+            y_pos = i * target_height
+            extended_column.paste(poster, (0, y_pos))
+        
+        # 第二遍：重复排列
+        for i, poster in enumerate(resized_posters):
+            y_pos = column_height + i * target_height
+            extended_column.paste(poster, (0, y_pos))
+        
+        return extended_column
+    
+    def generate_animation_frame(
+        self, 
+        extended_columns: List[Image.Image], 
+        frame_index: int, 
+        total_frames: int,
+        canvas_size: Tuple[int, int],
+        background_color: Tuple[int, int, int],
+        library_name: str = "",
+        use_macaron: bool = True
+    ) -> Image.Image:
+        """
+        生成单帧动画
+        
+        Args:
+            extended_columns: 扩展后的列图像列表
+            frame_index: 当前帧索引
+            total_frames: 总帧数
+            canvas_size: 画布尺寸
+            background_color: 背景颜色
+            library_name: 媒体库名称
+            use_macaron: 是否使用马卡龙配色
+            
+        Returns:
+            单帧图像
+        """
+        # 创建画布
+        frame = Image.new('RGB', canvas_size, background_color)
+        
+        # 计算滚动进度 (0.0 到 1.0)
+        progress = frame_index / total_frames
+        
+        # 每列的滚动偏移量（一个循环周期）
+        column_height = 900  # 3个海报 * 300高度
+        scroll_offset = int(progress * column_height)
+        
+        # 列间距和边距
+        column_width = 200
+        gap = 20
+        margin_x = (canvas_size[0] - (column_width * 3 + gap * 2)) // 2
+        margin_y = 50
+        
+        # 绘制三列
+        for col_idx, extended_col in enumerate(extended_columns):
+            x_pos = margin_x + col_idx * (column_width + gap)
+            
+            # 从扩展列中裁剪当前帧需要的部分
+            crop_y = scroll_offset
+            crop_box = (0, crop_y, column_width, crop_y + canvas_size[1] - margin_y * 2)
+            
+            try:
+                cropped = extended_col.crop(crop_box)
+                
+                # 添加轻微旋转效果
+                angle = math.sin(progress * math.pi * 2 + col_idx * 0.5) * 2
+                rotated = cropped.rotate(angle, expand=False, fillcolor=background_color)
+                
+                # 粘贴到画布
+                frame.paste(rotated, (x_pos, margin_y))
+            except Exception as e:
+                logger.warning(f"裁剪列 {col_idx} 失败: {e}")
+                continue
+        
+        # 添加标题
+        if library_name:
+            draw = ImageDraw.Draw(frame)
+            try:
+                font_size = int(canvas_size[1] * 0.08)
+                font_path = self._get_font_path()
+                font = ImageFont.truetype(str(font_path), font_size)
+            except:
+                font = ImageFont.load_default()
+            
+            bbox = draw.textbbox((0, 0), library_name, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_x = (canvas_size[0] - text_width) // 2
+            text_y = canvas_size[1] - 150
+            
+            # 阴影
+            draw.text((text_x + 3, text_y + 3), library_name, font=font, fill=(0, 0, 0, 180))
+            # 文字
+            draw.text((text_x, text_y), library_name, font=font, fill=(255, 255, 255, 255))
+        
+        return frame
+    
+    async def generate_animated_cover(
+        self,
+        library_id: str,
+        library_name: str,
+        style: str = "multi_1",
+        frame_count: int = 30,
+        frame_duration: int = 50,
+        output_format: str = "gif",
+        use_title: bool = True,
+        use_macaron: bool = True,
+        use_film_grain: bool = True,
+        poster_count: int = 9,
+        **kwargs
+    ) -> bytes:
+        """
+        生成动画封面 (GIF 或 WebP)
+        
+        Args:
+            library_id: 媒体库ID
+            library_name: 媒体库名称
+            style: 风格（目前仅支持 multi_1）
+            frame_count: 帧数
+            frame_duration: 帧间隔（毫秒）
+            output_format: 输出格式 (gif/webp)
+            use_title: 是否显示标题
+            use_macaron: 是否使用马卡龙配色
+            use_film_grain: 是否添加胶片颗粒
+            poster_count: 海报数量
+            
+        Returns:
+            动画文件的字节数据
+        """
+        logger.info(f"开始生成动画封面: {library_name}, 帧数: {frame_count}")
+        
+        # 获取海报图片
+        posters = await self._fetch_posters(library_id, count=poster_count)
+        if not posters:
+            raise ValueError(f"未能获取媒体库 {library_name} 的海报")
+        
+        logger.info(f"成功获取 {len(posters)} 张海报")
+        
+        # 提取主色调
+        macaron_colors = []
+        if use_macaron:
+            for poster in posters[:5]:
+                colors = find_dominant_macaron_colors(poster, num_colors=2)
+                macaron_colors.extend(colors)
+        
+        # 选择背景色
+        bg_color = macaron_colors[0] if macaron_colors else (180, 200, 220)
+        
+        # 创建渐变背景
+        canvas_size = (1000, 1500)
+        gradient_bg = create_gradient_background(canvas_size[0], canvas_size[1], macaron_colors)
+        
+        # 创建扩展列
+        extended_columns = []
+        for col_idx in range(3):
+            extended_col = self.create_extended_column(posters, col_idx)
+            extended_columns.append(extended_col)
+        
+        logger.info("扩展列创建完成")
+        
+        # 生成所有帧
+        frames = []
+        for frame_idx in range(frame_count):
+            frame = self.generate_animation_frame(
+                extended_columns=extended_columns,
+                frame_index=frame_idx,
+                total_frames=frame_count,
+                canvas_size=canvas_size,
+                background_color=bg_color,
+                library_name=library_name if use_title else "",
+                use_macaron=use_macaron
+            )
+            
+            # 合成渐变背景
+            frame_with_bg = gradient_bg.copy()
+            frame_with_bg.paste(frame, (0, 0), frame if frame.mode == 'RGBA' else None)
+            
+            # 添加胶片颗粒
+            if use_film_grain:
+                frame_with_bg = add_film_grain(frame_with_bg, intensity=0.03)
+            
+            frames.append(frame_with_bg)
+            
+            if (frame_idx + 1) % 10 == 0:
+                logger.info(f"已生成 {frame_idx + 1}/{frame_count} 帧")
+        
+        logger.info(f"所有帧生成完成，开始保存为 {output_format.upper()}")
+        
+        # 保存为动画
+        output = io.BytesIO()
+        
+        if output_format.lower() == 'gif':
+            frames[0].save(
+                output,
+                format='GIF',
+                save_all=True,
+                append_images=frames[1:],
+                duration=frame_duration,
+                loop=0,
+                optimize=True
+            )
+        elif output_format.lower() == 'webp':
+            frames[0].save(
+                output,
+                format='WEBP',
+                save_all=True,
+                append_images=frames[1:],
+                duration=frame_duration,
+                loop=0,
+                quality=85
+            )
+        else:
+            raise ValueError(f"不支持的输出格式: {output_format}")
+        
+        output.seek(0)
+        logger.info(f"动画封面生成完成: {library_name}, 大小: {len(output.getvalue())} 字节")
+        return output.getvalue()
+
+
+# 创建全局实例
+cover_service = CoverGeneratorService()
