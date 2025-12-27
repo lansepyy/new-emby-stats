@@ -639,47 +639,19 @@ class CoverGeneratorService:
         start_y = cfg["START_Y"]
         column_spacing = cfg["COLUMN_SPACING"]
         
-        # 提取马卡龙风格主色调
-        vibrant_colors = find_dominant_macaron_colors(posters[0], num_colors=6)
+        # 生成随机纯色背景（每次都不一样）
+        # 使用HSL颜色空间生成柔和的马卡龙风格颜色
+        h = random.uniform(0, 1)  # 随机色相
+        s = random.uniform(0.4, 0.7)  # 饱和度范围：中等饱和度
+        l = random.uniform(0.45, 0.65)  # 亮度范围：中等亮度
         
-        # 柔和的颜色备选
-        soft_colors = [
-            (237, 159, 77),
-            (255, 183, 197),
-            (186, 225, 255),
-            (255, 223, 186),
-            (202, 231, 200),
-            (245, 203, 255),
-        ]
+        r, g, b = colorsys.hls_to_rgb(h, l, s)
+        bg_color = (int(r * 255), int(g * 255), int(b * 255))
         
-        # 选择背景色
-        if vibrant_colors:
-            bg_color = vibrant_colors[0]
-        else:
-            bg_color = random.choice(soft_colors)
+        logger.info(f"随机生成背景色: RGB{bg_color}")
         
-        # 创建模糊背景
-        if use_blur and posters:
-            # 使用第一张海报创建模糊背景
-            bg_img = posters[0].copy()
-            bg_img = ImageOps.fit(bg_img, (canvas_width, canvas_height), method=Image.LANCZOS)
-            bg_img = bg_img.filter(ImageFilter.GaussianBlur(radius=blur_size))
-            
-            # 与背景色混合
-            bg_color_darkened = darken_color(bg_color, 0.85)
-            bg_img_array = np.array(bg_img, dtype=float)
-            bg_color_array = np.array([[bg_color_darkened]], dtype=float)
-            
-            # 混合背景图和颜色
-            blended_bg = bg_img_array * (1 - color_ratio) + bg_color_array * color_ratio
-            blended_bg = np.clip(blended_bg, 0, 255).astype(np.uint8)
-            colored_bg_img = Image.fromarray(blended_bg)
-            
-            # 添加胶片颗粒效果
-            colored_bg_img = add_film_grain(colored_bg_img, intensity=0.05)
-        else:
-            # 纯色背景
-            colored_bg_img = Image.new("RGB", (canvas_width, canvas_height), bg_color)
+        # 创建纯色背景
+        colored_bg_img = Image.new("RGB", (canvas_width, canvas_height), bg_color)
         
         # 创建画布
         result = colored_bg_img.convert("RGBA")

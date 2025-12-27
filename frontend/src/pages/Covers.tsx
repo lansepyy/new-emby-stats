@@ -626,7 +626,11 @@ export default function Covers() {
                     <div className="text-xs opacity-80">GIF 格式</div>
                   </div>
                   <div className="absolute inset-0 flex items-center justify-center p-6">
-                    <div className="w-full h-full bg-white/20 backdrop-blur-sm rounded-lg shadow-2xl animate-pulse"></div>
+                    <img 
+                      src="/multi_1_animated.gif" 
+                      alt="GIF动画预览"
+                      className="w-full h-full object-contain rounded-lg shadow-2xl"
+                    />
                   </div>
                   <div className="absolute bottom-3 right-3 text-white text-xs bg-black/30 px-2 py-1 rounded-full">
                     ▶️ 动态播放
