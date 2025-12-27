@@ -302,7 +302,8 @@ class CoverGeneratorService:
         
         # 返回默认字体路径（即使不存在，PIL会使用默认字体）
         return self.font_dir / "default.ttf"
-        def _add_title_overlay(
+    
+    def _add_title_overlay(
         self,
         canvas: Image.Image,
         title: str,
@@ -361,7 +362,8 @@ class CoverGeneratorService:
             )
         
         return canvas
-        async def _fetch_posters(self, library_id: str, count: int = 9) -> List[Image.Image]:
+    
+    async def _fetch_posters(self, library_id: str, count: int = 9) -> List[Image.Image]:
         """获取海报图片列表"""
         items = await self.get_library_items(library_id, limit=count * 2)
         if not items:
