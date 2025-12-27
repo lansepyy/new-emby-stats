@@ -55,25 +55,23 @@ export default function Covers() {
   const [config, setConfig] = useState<CoverConfig>({
     style: 'multi_1',
     use_title: true,
-    title_text: `# 配置封面标题（按媒体库名称对应）
-# 格式如下：
-# 格式说明：
-#  1. 媒体库名称:
-#  2.   - 中文标题
-#  3.   - 英文标题
+    title_text: `# 序号格式说明：
+# 1. 媒体库名称:
+# 2.   - 中文标题
+# 3.   - 英文标题
 #
-# 示例（可复制修改）：
-#  1. 华语电影:
-#  2.   - 华语电影
-#  3.   - Chinese Movies
+# 配置示例（可复制修改）：
+# 1. 华语电影:
+# 2.   - 华语电影
+#3.   - Chinese Movies
 #
-#  4. 欧美电影:
-#  5.   - 欧美电影
-#  6.   - Western Movies
+# 4. 欧美电影:
+# 5.   - 欧美电影
+# 6.   - Western Movies
 #
-#  7. 电视剧:
-#  8.   - 电视剧
-#  9.   - TV Series
+# 7. 电视剧:
+# 8.   - 电视剧
+# 9.   - TV Series
 #
 # 10. 动漫:
 # 11.   - 动漫
@@ -148,11 +146,49 @@ export default function Covers() {
     setError(null)
     try {
       const selectedLib = libraries.find((lib: Library) => lib.id === selectedLibrary)
+      
+      // 解析YAML配置获取中英文标题
+      let title = selectedLib?.name || ''
+      let subtitle = ''
+      
+      if (config.title_text && selectedLib?.name) {
+        try {
+          const lines = config.title_text.split('\n')
+          let currentLibrary = ''
+          let foundLibrary = false
+          
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim()
+            
+            // 跳过注释和空行
+            if (line.startsWith('#') || !line) continue
+            
+            // 检查是否是媒体库名称行（以:结尾）
+            if (line.endsWith(':')) {
+              currentLibrary = line.slice(0, -1).trim()
+              foundLibrary = currentLibrary === selectedLib.name
+            }
+            // 如果找到了对应的媒体库，读取其标题
+            else if (foundLibrary && line.startsWith('-')) {
+              const value = line.slice(1).trim()
+              if (!title || title === selectedLib.name) {
+                title = value  // 第一个 - 是中文标题
+              } else if (!subtitle) {
+                subtitle = value  // 第二个 - 是英文标题
+                break  // 找到两个标题后退出
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('YAML配置解析失败，使用默认标题:', e)
+        }
+      }
+      
       const requestData = {
         library_id: selectedLibrary,
         library_name: selectedLib?.name || '',
-        title: config.title_text || selectedLib?.name || '',
-        subtitle: '',
+        title: title,
+        subtitle: subtitle,
         ...config
       }
       
@@ -406,11 +442,11 @@ export default function Covers() {
                       }`}
                     >
                       {/* 预览图 */}
-                      <div className="aspect-[2/3] bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
+                      <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden flex items-center justify-center">
                         <img 
                           src={STYLE_INFO[style].preview} 
                           alt={STYLE_INFO[style].name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                         />
                       </div>
                       

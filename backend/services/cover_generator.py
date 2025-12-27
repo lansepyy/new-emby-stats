@@ -427,9 +427,12 @@ class CoverGeneratorService:
             # 粘贴
             canvas.paste(col_image, (x, y), col_image)
         
-        # 添加标题
+        # 添加标题（使用左侧布局）
         if title or subtitle:
-            canvas = self._add_title_to_canvas(canvas, title or library_name, subtitle)
+            # 提取色块颜色
+            c = main_colors[0] if main_colors else (100, 150, 200)
+            random_color = (c[0], c[1], c[2], 255) if len(c) == 3 else tuple(list(c)[:3] + [255])
+            canvas = self._add_title_overlay(canvas, title or library_name, subtitle, random_color)
         
         # 转换为字节
         output = io.BytesIO()
@@ -537,6 +540,7 @@ class CoverGeneratorService:
         library_id: str,
         library_name: str,
         title: str = "",
+        subtitle: str = "",
         use_film_grain: bool = True,
         blur_size: int = 50,
         color_ratio: float = 0.8
@@ -582,24 +586,12 @@ class CoverGeneratorService:
         if use_film_grain:
             canvas = add_film_grain(canvas, intensity=0.05)
         
-        # 添加标题
-        draw = ImageDraw.Draw(canvas)
-        try:
-            font = ImageFont.truetype(str(self.font_dir / "title.ttf"), 100)
-        except:
-            font = ImageFont.load_default()
-        
-        text = title or library_name
-        # 简单居中
-        bbox = draw.textbbox((0, 0), text, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_x = (canvas_size[0] - text_width) // 2
-        text_y = canvas_size[1] - 200
-        
-        # 阴影
-        draw.text((text_x + 3, text_y + 3), text, font=font, fill=(0, 0, 0, 128))
-        # 文字
-        draw.text((text_x, text_y), text, font=font, fill=(255, 255, 255, 255))
+        # 使用左侧标题布局（与动图一致）
+        if title:
+            # 提取色块颜色
+            c = macaron_colors[0] if macaron_colors else (100, 150, 200)
+            random_color = (c[0], c[1], c[2], 255) if len(c) == 3 else tuple(list(c)[:3] + [255])
+            canvas = self._add_title_overlay(canvas, title, subtitle, random_color)
         
         # 转换为字节
         output = io.BytesIO()
@@ -967,6 +959,7 @@ class CoverGeneratorService:
             
             gif_frames[0].save(
                 output,
+                format='GIF',
                 save_all=True,
                 append_images=gif_frames[1:],
                 duration=frame_duration,

@@ -100,6 +100,7 @@ async def generate_cover(request: GenerateCoverRequest):
                 library_id=request.library_id,
                 library_name=request.library_name,
                 title=request.title,
+                subtitle=request.subtitle,
                 use_film_grain=request.use_film_grain,
                 blur_size=request.blur_size,
                 color_ratio=request.color_ratio
