@@ -430,6 +430,152 @@ class CoverGeneratorService:
         
         return img_copy
     
+    def _draw_text_on_image(
+        self,
+        image: Image.Image,
+        text: str,
+        position: Tuple[int, int],
+        font: ImageFont.FreeTypeFont,
+        fill_color: Tuple[int, int, int, int] = (255, 255, 255, 255),
+        shadow: bool = False,
+        shadow_color: Optional[Tuple[int, int, int]] = None,
+        shadow_offset: int = 10,
+        shadow_alpha: int = 75
+    ) -> Image.Image:
+        """在图像上绘制文字，可选择添加阴影效果（参考MoviePilot）"""
+        img_copy = image.copy()
+        text_layer = Image.new('RGBA', img_copy.size, (255, 255, 255, 0))
+        shadow_layer = Image.new('RGBA', img_copy.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(text_layer)
+        shadow_draw = ImageDraw.Draw(shadow_layer)
+        
+        # 如果需要添加阴影
+        if shadow:
+            fill_color = (fill_color[0], fill_color[1], fill_color[2], 229)
+            if shadow_color is None:
+                if len(fill_color) >= 3:
+                    r = max(0, int(fill_color[0] * 0.7))
+                    g = max(0, int(fill_color[1] * 0.7))
+                    b = max(0, int(fill_color[2] * 0.7))
+                    shadow_color_with_alpha = (r, g, b, shadow_alpha)
+                else:
+                    shadow_color_with_alpha = (50, 50, 50, shadow_alpha)
+            else:
+                if len(shadow_color) == 3:
+                    shadow_color_with_alpha = shadow_color + (shadow_alpha,)
+                elif len(shadow_color) == 4:
+                    shadow_color_with_alpha = shadow_color[:3] + (shadow_alpha,)
+                else:
+                    shadow_color_with_alpha = (50, 50, 50, shadow_alpha)
+            
+            for offset in range(3, shadow_offset + 1, 2):
+                shadow_draw.text(
+                    (position[0] + offset, position[1] + offset),
+                    text,
+                    font=font,
+                    fill=shadow_color_with_alpha
+                )
+        
+        # 绘制主文字
+        draw.text(position, text, font=font, fill=fill_color)
+        blurred_shadow = shadow_layer.filter(ImageFilter.GaussianBlur(radius=shadow_offset))
+        combined = Image.alpha_composite(img_copy, blurred_shadow)
+        img_copy = Image.alpha_composite(combined, text_layer)
+        
+        return img_copy
+    
+    def _draw_multiline_text_on_image(
+        self,
+        image: Image.Image,
+        text: str,
+        position: Tuple[int, int],
+        font: ImageFont.FreeTypeFont,
+        line_spacing: int = 10,
+        fill_color: Tuple[int, int, int, int] = (255, 255, 255, 255),
+        shadow: bool = False,
+        shadow_color: Optional[Tuple[int, int, int]] = None,
+        shadow_offset: int = 4,
+        shadow_alpha: int = 100
+    ) -> Tuple[Image.Image, int]:
+        """在图像上绘制多行文字，根据空格自动换行（参考MoviePilot）"""
+        img_copy = image.copy()
+        text_layer = Image.new('RGBA', img_copy.size, (255, 255, 255, 0))
+        draw = ImageDraw.Draw(text_layer)
+        
+        # 按空格分割文本
+        lines = text.split(" ")
+        
+        # 如果未指定阴影颜色，则根据填充颜色生成
+        if shadow:
+            fill_color = (fill_color[0], fill_color[1], fill_color[2], 229)
+            if shadow_color is None:
+                if len(fill_color) >= 3:
+                    r = max(0, int(fill_color[0] * 0.7))
+                    g = max(0, int(fill_color[1] * 0.7))
+                    b = max(0, int(fill_color[2] * 0.7))
+                    shadow_color_with_alpha = (r, g, b, shadow_alpha)
+                else:
+                    shadow_color_with_alpha = (50, 50, 50, shadow_alpha)
+            else:
+                if len(shadow_color) == 3:
+                    shadow_color_with_alpha = shadow_color + (shadow_alpha,)
+                elif len(shadow_color) == 4:
+                    shadow_color_with_alpha = shadow_color[:3] + (shadow_alpha,)
+                else:
+                    shadow_color_with_alpha = (50, 50, 50, shadow_alpha)
+        
+        # 如果只有一行，直接绘制并返回
+        if len(lines) <= 1:
+            if shadow:
+                for offset in range(3, shadow_offset + 1, 2):
+                    draw.text(
+                        (position[0] + offset, position[1] + offset),
+                        text,
+                        font=font,
+                        fill=shadow_color_with_alpha
+                    )
+            draw.text(position, text, font=font, fill=fill_color)
+            img_copy = Image.alpha_composite(img_copy, text_layer)
+            return img_copy, 1
+        
+        # 绘制多行文本
+        x, y = position
+        font_size = font.size if hasattr(font, 'size') else 50
+        for i, line in enumerate(lines):
+            current_y = y + i * (font_size + line_spacing)
+            
+            if shadow:
+                for offset in range(3, shadow_offset + 1, 2):
+                    draw.text(
+                        (x + offset, current_y + offset),
+                        line,
+                        font=font,
+                        fill=shadow_color_with_alpha
+                    )
+            draw.text((x, current_y), line, font=font, fill=fill_color)
+        
+        img_copy = Image.alpha_composite(img_copy, text_layer)
+        return img_copy, len(lines)
+    
+    def _draw_color_block(
+        self,
+        image: Image.Image,
+        position: Tuple[int, int],
+        size: Tuple[int, int],
+        color: Tuple[int, int, int, int]
+    ) -> Image.Image:
+        """在图像上绘制色块（参考MoviePilot）"""
+        img_copy = image.copy()
+        draw = ImageDraw.Draw(img_copy)
+        
+        # 绘制矩形色块
+        draw.rectangle(
+            [position, (position[0] + size[0], position[1] + size[1])],
+            fill=color
+        )
+        
+        return img_copy
+    
     async def generate_style_multi(
         self,
         library_id: str,
@@ -538,16 +684,22 @@ class CoverGeneratorService:
         # 创建画布
         result = colored_bg_img.convert("RGBA")
         
-        # 重新排列海报为列优先顺序（参考 jellyfin-library-poster）
-        # 原始顺序: 1,2,3,4,5,6,7,8,9
-        # 列优先: 第1列(1,4,7), 第2列(2,5,8), 第3列(3,6,9)
-        # 最终顺序: 1,4,7, 2,5,8, 3,6,9
+        # 使用MoviePilot的自定义顺序重新排列海报
+        # custom_order = "315426987"
+        # 这个顺序是优先把最开始的两张图1.jpg和2.jpg放在最显眼的位置(1,2)和(2,2)，而最后一个9.jpg放在看不见的位置(3,1)
+        # 九宫格位置: (row, col) = (1,1),(1,2),(1,3), (2,1),(2,2),(2,3), (3,1),(3,2),(3,3)
+        # 索引映射:    0,     1,     2,      3,     4,     5,      6,     7,     8
+        # custom_order: 3,     1,     5,      4,     2,     6,      9,     8,     7
+        # 意味着: 位置0放第3张图, 位置1放第1张图, 位置2放第5张图, 等等
+        custom_order = "315426987"  # MoviePilot使用的顺序
         reordered_posters = []
-        for col in range(cols):
-            for row in range(rows):
-                idx = row * cols + col
-                if idx < len(posters):
-                    reordered_posters.append(posters[idx])
+        for order_char in custom_order:
+            idx = int(order_char) - 1  # 转换为0索引
+            if idx < len(posters):
+                reordered_posters.append(posters[idx])
+            else:
+                # 如果海报不够，循环使用
+                reordered_posters.append(posters[idx % len(posters)])
         
         # 将重排后的海报分组（每组3张为一列）
         grouped_posters = []
@@ -637,102 +789,103 @@ class CoverGeneratorService:
                 expand=True
             )
             
-            # 粘贴到结果画布
-            result.paste(
-                rotated_column,
-                (column_x - rotated_column.width // 2, start_y - rotated_column.height // 2),
-                rotated_column
-            )
+            # 计算列在模板上的位置（不同的列有不同的y起点）- 按照MoviePilot的逻辑
+            column_center_y = start_y + column_height // 2
+            column_center_x = column_x
+            
+            # 根据列索引调整位置 - 与MoviePilot完全一致
+            if col_index == 1:  # 中间列
+                column_center_x += cell_width - 50
+            elif col_index == 2:  # 右侧列
+                column_center_y += -155
+                column_center_x += (cell_width) * 2 - 40
+            
+            # 计算最终放置位置
+            final_x = column_center_x - rotated_column.width // 2 + cell_width // 2
+            final_y = column_center_y - rotated_column.height // 2
+            
+            # 粘贴旋转后的列到结果图像
+            result.paste(rotated_column, (final_x, final_y), rotated_column)
         
-        # ===== 添加标题 =====
-        if title or subtitle:
-            text_layer = Image.new("RGBA", result.size, (255, 255, 255, 0))
-            shadow_layer = Image.new("RGBA", result.size, (0, 0, 0, 0))
-            
-            draw = ImageDraw.Draw(text_layer)
-            shadow_draw = ImageDraw.Draw(shadow_layer)
-            
-            # 字体大小
-            zh_font_size = int(canvas_height * 0.17)
-            en_font_size = int(canvas_height * 0.07)
-            
-            # 加载字体（使用MoviePilot-Plugins的字体）
+        # ===== 添加标题（按照MoviePilot的方式）=====
+        # 获取随机颜色用于色块（从第一张海报）
+        def get_random_color_from_poster(poster_img):
+            """从海报图片随机位置获取颜色"""
+            try:
+                width, height = poster_img.size
+                random_x = random.randint(int(width * 0.5), int(width * 0.8))
+                random_y = random.randint(int(height * 0.5), int(height * 0.8))
+                
+                if poster_img.mode == "RGBA":
+                    r, g, b, a = poster_img.getpixel((random_x, random_y))
+                    return (r, g, b, a)
+                elif poster_img.mode == "RGB":
+                    r, g, b = poster_img.getpixel((random_x, random_y))
+                    return (r + 100, g + 50, b, 255)
+                else:
+                    poster_rgb = poster_img.convert("RGBA")
+                    r, g, b, a = poster_rgb.getpixel((random_x, random_y))
+                    return (r, g, b, a)
+            except Exception:
+                return (random.randint(50, 200), random.randint(50, 200), random.randint(50, 200), 255)
+        
+        random_color = get_random_color_from_poster(posters[0]) if posters else (237, 159, 77, 255)
+        
+        # 按照MoviePilot的方式绘制文字和色块
+        if title:  # 中文标题
             zh_font_path = self.font_dir / "multi_1_zh.ttf"
-            en_font_path = self.font_dir / "multi_1_en.otf"
-            
-            logger.info(f"multi_1 字体路径: 中文={zh_font_path}, 英文={en_font_path}")
+            zh_font_size = 163  # 固定字体大小，与MoviePilot一致
             
             if zh_font_path.exists():
                 zh_font = ImageFont.truetype(str(zh_font_path), zh_font_size)
-                logger.info(f"中文字体加载成功")
             else:
                 logger.warning(f"中文字体不存在: {zh_font_path}，使用默认字体")
                 zh_font = ImageFont.load_default()
             
+            # 绘制中文标题 - 使用MoviePilot的函数
+            text_shadow_color = darken_color(bg_color, 0.8)
+            result = self._draw_text_on_image(
+                result, title, (73, 427), zh_font,
+                shadow=use_blur, shadow_color=text_shadow_color
+            )
+        
+        # 如果有英文副标题，才添加英文名文字和色块
+        if subtitle:
+            en_font_path = self.font_dir / "multi_1_en.otf"
+            base_font_size = 50  # 默认字体大小
+            line_spacing = base_font_size * 0.1
+            
+            # 根据单词数量或最长单词长度调整字体大小
+            word_count = len(subtitle.split())
+            max_chars_per_line = max([len(word) for word in subtitle.split()]) if subtitle.split() else 0
+            
+            if max_chars_per_line > 10 or word_count > 3:
+                font_size = base_font_size * (10 / max(max_chars_per_line, word_count * 3)) ** 0.8
+                font_size = max(font_size, 30)  # 最小字体大小
+            else:
+                font_size = base_font_size
+            
             if en_font_path.exists():
-                en_font = ImageFont.truetype(str(en_font_path), en_font_size)
-                logger.info(f"英文字体加载成功")
+                en_font = ImageFont.truetype(str(en_font_path), int(font_size))
             else:
                 logger.warning(f"英文字体不存在: {en_font_path}，使用默认字体")
                 en_font = ImageFont.load_default()
             
-            # 计算左侧文字位置（画布四分之一处）
-            left_area_center_x = canvas_width // 4
-            left_area_center_y = canvas_height // 2
+            # 使用多行文本绘制
+            text_shadow_color = darken_color(bg_color, 0.8)
+            result, line_count = self._draw_multiline_text_on_image(
+                result, subtitle, (125, 625), en_font,
+                line_spacing=line_spacing,
+                shadow=use_blur, shadow_color=text_shadow_color
+            )
             
-            # 文字颜色和阴影
-            text_color = (255, 255, 255, 229)
-            shadow_color = darken_color(bg_color, 0.7) + (75,)
-            shadow_offset = 12
+            # 根据行数调整色块高度
+            color_block_position = (84, 620)
+            color_block_height = base_font_size + line_spacing + (line_count - 1) * (int(font_size) + line_spacing)
+            color_block_size = (22, color_block_height)
             
-            # 绘制中文标题
-            if title:
-                zh_bbox = draw.textbbox((0, 0), title, font=zh_font)
-                zh_text_w = zh_bbox[2] - zh_bbox[0]
-                zh_text_h = zh_bbox[3] - zh_bbox[1]
-                zh_x = left_area_center_x - zh_text_w // 2
-                zh_y = left_area_center_y - zh_text_h - en_font_size // 2 - 5
-                
-                # 阴影
-                for offset in range(3, shadow_offset + 1, 2):
-                    shadow_draw.text(
-                        (zh_x + offset, zh_y + offset),
-                        title,
-                        font=zh_font,
-                        fill=shadow_color
-                    )
-                
-                # 主文字
-                draw.text((zh_x, zh_y), title, font=zh_font, fill=text_color)
-            
-            # 绘制英文副标题
-            if subtitle:
-                en_bbox = draw.textbbox((0, 0), subtitle, font=en_font)
-                en_text_w = en_bbox[2] - en_bbox[0]
-                en_text_h = en_bbox[3] - en_bbox[1]
-                en_x = left_area_center_x - en_text_w // 2
-                
-                if title:
-                    en_y = zh_y + zh_text_h + en_font_size
-                else:
-                    en_y = left_area_center_y - en_text_h // 2
-                
-                # 阴影
-                for offset in range(2, shadow_offset // 2 + 1):
-                    shadow_draw.text(
-                        (en_x + offset, en_y + offset),
-                        subtitle,
-                        font=en_font,
-                        fill=shadow_color
-                    )
-                
-                # 主文字
-                draw.text((en_x, en_y), subtitle, font=en_font, fill=text_color)
-            
-            # 合成所有层
-            shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(radius=12))
-            result = Image.alpha_composite(result, shadow_layer)
-            result = Image.alpha_composite(result, text_layer)
+            # 绘制色块
+            result = self._draw_color_block(result, color_block_position, color_block_size, random_color)
         
         # 转换为字节
         output = io.BytesIO()
