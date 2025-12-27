@@ -19,6 +19,10 @@ import numpy as np
 
 from config import settings
 from services.emby import EmbyService
+from services.image_utils import (
+    crop_to_square, add_rounded_corners, add_shadow_and_rotate,
+    darken_color, find_dominant_macaron_colors, add_film_grain
+)
 
 logger = logging.getLogger(__name__)
 
