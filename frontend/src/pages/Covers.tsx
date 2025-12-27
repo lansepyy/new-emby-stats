@@ -30,66 +30,17 @@ const STYLE_INFO = {
   single_1: {
     name: '单图 1',
     description: '单张海报，模糊背景',
-    preview: (
-      <div className="w-full h-full bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 flex flex-col items-center justify-center p-6 relative">
-        <div className="absolute top-4 left-4 text-white">
-          <div className="text-xl font-bold">动画电影</div>
-          <div className="text-xs opacity-80">Animated Films</div>
-        </div>
-        <div className="w-2/3 aspect-[2/3] bg-white rounded-2xl shadow-2xl relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 flex items-center justify-center">
-            <div className="text-white text-4xl font-black opacity-30">🎬</div>
-          </div>
-        </div>
-      </div>
-    )
+    preview: '/single_1.jpg'
   },
   single_2: {
     name: '单图 2', 
     description: '单张海报，颜色混合',
-    preview: (
-      <div className="w-full h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex flex-col items-center justify-center p-6 relative">
-        <div className="absolute top-4 left-4 text-white">
-          <div className="text-xl font-bold">动画电影</div>
-          <div className="text-xs opacity-80">Animated Films</div>
-        </div>
-        <div className="w-2/3 aspect-[2/3] bg-white rounded-2xl shadow-2xl relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-400 via-indigo-500 to-purple-600 flex items-center justify-center">
-            <div className="absolute inset-0 bg-gradient-to-tl from-teal-400/50 via-transparent to-transparent"></div>
-            <div className="text-white text-4xl font-black opacity-30">🎭</div>
-          </div>
-        </div>
-      </div>
-    )
+    preview: '/single_2.jpg'
   },
   multi_1: {
     name: '多图 1',
     description: '3×3海报拼贴阵列',
-    preview: (
-      <div className="w-full h-full bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 flex flex-col items-center justify-center p-5 relative">
-        <div className="absolute top-3 left-3 text-white">
-          <div className="text-lg font-bold">动画电影</div>
-          <div className="text-xs opacity-80">Films</div>
-        </div>
-        <div className="grid grid-cols-3 gap-1.5 w-full h-full p-2">
-          {[
-            { bg: 'from-red-400 to-pink-600', emoji: '🎬' },
-            { bg: 'from-yellow-400 to-orange-600', emoji: '🎪' },
-            { bg: 'from-green-400 to-emerald-600', emoji: '🎨' },
-            { bg: 'from-blue-400 to-cyan-600', emoji: '🎭' },
-            { bg: 'from-purple-400 to-pink-600', emoji: '🎵' },
-            { bg: 'from-indigo-400 to-purple-600', emoji: '🎸' },
-            { bg: 'from-pink-400 to-rose-600', emoji: '🎺' },
-            { bg: 'from-orange-400 to-red-600', emoji: '🎻' },
-            { bg: 'from-teal-400 to-cyan-600', emoji: '🎹' }
-          ].map((item, i) => (
-            <div key={i} className={`aspect-[2/3] bg-gradient-to-br ${item.bg} rounded shadow-lg flex items-center justify-center text-2xl`}>
-              <span className="opacity-40">{item.emoji}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
+    preview: '/multi_1.jpg'
   }
 }
 
@@ -149,11 +100,13 @@ export default function Covers() {
     setLoading(true)
     setError(null)
     try {
+      const selectedLib = libraries.find((lib: Library) => lib.id === selectedLibrary)
       const response = await fetch('/api/cover/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           library_id: selectedLibrary,
+          library_name: selectedLib?.name || '',
           ...config
         })
       })
@@ -382,7 +335,11 @@ export default function Covers() {
                     >
                       {/* 预览图 */}
                       <div className="aspect-[2/3] bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
-                        {STYLE_INFO[style].preview}
+                        <img 
+                          src={STYLE_INFO[style].preview} 
+                          alt={STYLE_INFO[style].name}
+                          className="w-full h-full object-cover"
+                        />
                         {config.style === style && (
                           <div className="absolute inset-0 bg-blue-600 bg-opacity-10 backdrop-blur-[1px]"></div>
                         )}
