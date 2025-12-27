@@ -6,6 +6,7 @@ from fastapi.responses import Response
 from typing import Optional
 from pydantic import BaseModel
 import logging
+import urllib.parse
 
 from services.cover_generator import cover_service
 
@@ -111,12 +112,16 @@ async def generate_cover(request: GenerateCoverRequest):
         if not image_data:
             raise HTTPException(status_code=500, detail="封面生成失败")
         
-        # 返回图片
+        # 生成文件名并进行 URL 编码
+        filename = f"{request.library_name}_cover.png"
+        encoded_filename = urllib.parse.quote(filename)
+        
+        # 返回图片,使用 RFC 5987 格式支持中文文件名
         return Response(
             content=image_data,
             media_type="image/png",
             headers={
-                "Content-Disposition": f'inline; filename="{request.library_name}_cover.png"'
+                "Content-Disposition": f"inline; filename*=UTF-8''{encoded_filename}"
             }
         )
     

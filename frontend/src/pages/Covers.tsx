@@ -444,7 +444,7 @@ export default function Covers() {
                       {/* 预览图 */}
                       <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden flex items-center justify-center">
                         <img 
-                          src={STYLE_INFO[style].preview} 
+                          src={config.is_animated && style === 'multi_1' ? '/multi_1_animated.webp' : STYLE_INFO[style].preview} 
                           alt={STYLE_INFO[style].name}
                           className="w-full h-full object-contain"
                         />
