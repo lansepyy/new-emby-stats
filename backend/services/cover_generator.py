@@ -622,7 +622,7 @@ class CoverGeneratorService:
             扩展后的列图像
         """
         if not images:
-            return Image.new('RGB', (200, 600))
+            return Image.new('RGBA', (410 + 60, 1874 + 60), (0, 0, 0, 0))
         
         # 每列包含的海报数量
         posters_per_column = 3
@@ -635,36 +635,78 @@ class CoverGeneratorService:
             idx = (start_idx + i) % len(images)
             column_posters.append(images[idx])
         
-        # 统一海报尺寸
-        target_width = 200
-        target_height = 300
+        # 统一海报尺寸 - 使用标准尺寸 (与原项目一致)
+        target_width = 410
+        target_height = 610
+        margin = 22  # 海报间距
+        corner_radius = 46  # 圆角半径
+        
         resized_posters = []
         for poster in column_posters:
             resized = poster.copy()
             resized.thumbnail((target_width, target_height), Image.Resampling.LANCZOS)
             
             # 创建固定大小的画布并居中粘贴
-            canvas = Image.new('RGB', (target_width, target_height), (0, 0, 0))
+            canvas = Image.new('RGBA', (target_width, target_height), (0, 0, 0, 255))
             x_offset = (target_width - resized.width) // 2
             y_offset = (target_height - resized.height) // 2
+            
+            # 转换为RGBA
+            if resized.mode != 'RGBA':
+                resized = resized.convert('RGBA')
             canvas.paste(resized, (x_offset, y_offset))
-            resized_posters.append(canvas)
+            
+            # 添加圆角
+            if corner_radius > 0:
+                mask = Image.new('L', (target_width, target_height), 0)
+                draw = ImageDraw.Draw(mask)
+                draw.rounded_rectangle(
+                    [(0, 0), (target_width, target_height)],
+                    radius=corner_radius,
+                    fill=255
+                )
+                rounded = Image.new('RGBA', (target_width, target_height), (0, 0, 0, 0))
+                rounded.paste(canvas, (0, 0), mask)
+                canvas = rounded
+            
+            # 添加阴影
+            shadow_offset = (20, 20)
+            shadow_blur = 20
+            shadow_size = (target_width + shadow_offset[0] + shadow_blur * 2,
+                          target_height + shadow_offset[1] + shadow_blur * 2)
+            shadow_img = Image.new('RGBA', shadow_size, (0, 0, 0, 0))
+            
+            # 创建阴影层
+            shadow_layer = Image.new('RGBA', (target_width, target_height), (0, 0, 0, 255))
+            shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(shadow_blur))
+            shadow_img.paste(shadow_layer, shadow_offset, shadow_layer)
+            
+            # 粘贴原图
+            shadow_img.paste(canvas, (0, 0), canvas)
+            resized_posters.append(shadow_img)
         
         # 创建扩展列：垂直重复两次以实现无缝循环
-        column_height = target_height * posters_per_column
-        extended_height = column_height * 2
+        # 包含间距的单列高度
+        single_column_height = posters_per_column * target_height + (posters_per_column - 1) * margin
+        extended_height = single_column_height * 2 + margin
         
-        extended_column = Image.new('RGB', (target_width, extended_height))
+        # 加上阴影额外空间
+        shadow_extra_width = 20 + 20 * 2
+        shadow_extra_height = 20 + 20 * 2
+        extended_column = Image.new('RGBA', 
+                                   (target_width + shadow_extra_width, 
+                                    extended_height + shadow_extra_height),
+                                   (0, 0, 0, 0))
         
         # 第一遍：正常排列
         for i, poster in enumerate(resized_posters):
-            y_pos = i * target_height
-            extended_column.paste(poster, (0, y_pos))
+            y_pos = i * (target_height + margin)
+            extended_column.paste(poster, (0, y_pos), poster)
         
         # 第二遍：重复排列
         for i, poster in enumerate(resized_posters):
-            y_pos = column_height + i * target_height
-            extended_column.paste(poster, (0, y_pos))
+            y_pos = single_column_height + margin + i * (target_height + margin)
+            extended_column.paste(poster, (0, y_pos), poster)
         
         return extended_column
     
@@ -693,41 +735,85 @@ class CoverGeneratorService:
         Returns:
             单帧图像
         """
-        # 创建画布
-        frame = Image.new('RGB', canvas_size, background_color)
+        # 创建画布 - 使用RGBA支持透明度
+        frame = Image.new('RGBA', canvas_size, background_color + (255,))
         
         # 计算滚动进度 (0.0 到 1.0)
         progress = frame_index / total_frames
         
-        # 每列的滚动偏移量（一个循环周期）
-        column_height = 900  # 3个海报 * 300高度
-        scroll_offset = int(progress * column_height)
+        # 每列的滚动偏移量（一个循环周期）- 包含间距
+        margin = 22
+        target_height = 610
+        single_column_height = 3 * target_height + 2 * margin  # 1874
+        move_distance = single_column_height + margin
+        base_offset = int(progress * move_distance)
         
-        # 列间距和边距
-        column_width = 200
-        gap = 20
-        margin_x = (canvas_size[0] - (column_width * 3 + gap * 2)) // 2
-        margin_y = 50
+        # 列布局参数
+        column_width = 410
+        column_spacing = 100
+        start_x = 835
+        start_y = -362
+        rotation_angle = -15.8  # 原项目的旋转角度
         
         # 绘制三列
         for col_idx, extended_col in enumerate(extended_columns):
-            x_pos = margin_x + col_idx * (column_width + gap)
+            # 根据列索引确定移动方向：第1列向上，第2列向下，第3列向上
+            if col_idx == 1:
+                offset = base_offset  # 向下移动（正偏移）
+            else:
+                offset = -base_offset  # 向上移动（负偏移）
             
             # 从扩展列中裁剪当前帧需要的部分
-            crop_y = scroll_offset
-            crop_box = (0, crop_y, column_width, crop_y + canvas_size[1] - margin_y * 2)
+            shadow_extra = 20 + 20 * 2
+            crop_y_start = single_column_height // 2 + offset
+            crop_y_start = crop_y_start % (single_column_height + margin)
             
             try:
-                cropped = extended_col.crop(crop_box)
+                # 裁剪出需要的部分
+                cropped = extended_col.crop((
+                    0,
+                    crop_y_start,
+                    extended_col.width,
+                    crop_y_start + single_column_height + shadow_extra
+                ))
                 
-                # 添加轻微旋转效果
-                angle = math.sin(progress * math.pi * 2 + col_idx * 0.5) * 2
-                rotated = cropped.rotate(angle, expand=False, fillcolor=background_color)
+                # 创建旋转画布
+                rotation_canvas_size = int(
+                    math.sqrt(cropped.width ** 2 + cropped.height ** 2) * 1.5
+                )
+                rotation_canvas = Image.new(
+                    'RGBA', (rotation_canvas_size, rotation_canvas_size), (0, 0, 0, 0)
+                )
                 
-                # 粘贴到画布
-                frame.paste(rotated, (x_pos, margin_y))
+                paste_x = (rotation_canvas_size - cropped.width) // 2
+                paste_y = (rotation_canvas_size - cropped.height) // 2
+                rotation_canvas.paste(cropped, (paste_x, paste_y), cropped)
+                
+                # 旋转整列
+                rotated_column = rotation_canvas.rotate(
+                    rotation_angle, Image.BICUBIC, expand=True
+                )
+                
+                # 计算列在画布上的位置
+                column_x = start_x + col_idx * column_spacing
+                column_center_y = start_y + single_column_height // 2
+                column_center_x = column_x
+                
+                # 根据列索引微调位置
+                if col_idx == 1:
+                    column_center_x += column_width - 50
+                elif col_idx == 2:
+                    column_center_y += -155
+                    column_center_x += column_width * 2 - 40
+                
+                # 计算最终放置位置
+                final_x = column_center_x - rotated_column.width // 2 + column_width // 2
+                final_y = column_center_y - rotated_column.height // 2
+                
+                # 粘贴旋转后的列
+                frame.paste(rotated_column, (final_x, final_y), rotated_column)
             except Exception as e:
-                logger.warning(f"裁剪列 {col_idx} 失败: {e}")
+                logger.warning(f"处理列 {col_idx} 失败: {e}")
                 continue
         
         # 添加标题
@@ -803,8 +889,8 @@ class CoverGeneratorService:
         # 选择背景色
         bg_color = macaron_colors[0] if macaron_colors else (180, 200, 220)
         
-        # 创建渐变背景
-        canvas_size = (1000, 1500)
+        # 创建渐变背景 - 增加到高清尺寸
+        canvas_size = (1920, 1080)  # 提升到 1080P
         gradient_bg = create_gradient_background(canvas_size[0], canvas_size[1], macaron_colors)
         
         # 创建扩展列
@@ -843,18 +929,49 @@ class CoverGeneratorService:
         
         logger.info(f"所有帧生成完成，开始保存为 {output_format.upper()}")
         
+        # 缩放到标准输出尺寸 (560x315, 参考原项目)
+        output_size = (560, 315)
+        logger.info(f"缩放到输出尺寸: {output_size}")
+        resized_frames = []
+        for frame in frames:
+            resized = frame.resize(output_size, Image.Resampling.LANCZOS)
+            resized_frames.append(resized)
+        frames = resized_frames
+        
         # 保存为动画
         output = io.BytesIO()
         
         if output_format.lower() == 'gif':
-            frames[0].save(
+            # GIF格式 - 使用全局调色板避免文字闪烁（参考原项目）
+            gif_colors = 256  # 使用256色调色板
+            gif_frames = []
+            
+            # 基于第一帧生成全局调色板，所有帧共享同一调色板
+            first_frame_rgb = frames[0].convert("RGB")
+            from PIL import Image as PILImage
+            global_palette = first_frame_rgb.quantize(
+                colors=gif_colors, 
+                method=PILImage.Quantize.MEDIANCUT
+            )
+            
+            logger.info("使用全局调色板处理GIF帧...")
+            for i, frame in enumerate(frames):
+                # 转换为RGB
+                frame_rgb = frame.convert("RGB")
+                # 使用全局调色板进行量化，确保颜色一致性
+                frame_p = frame_rgb.quantize(
+                    palette=global_palette, 
+                    dither=PILImage.Dither.FLOYDSTEINBERG
+                )
+                gif_frames.append(frame_p)
+            
+            gif_frames[0].save(
                 output,
-                format='GIF',
                 save_all=True,
-                append_images=frames[1:],
+                append_images=gif_frames[1:],
                 duration=frame_duration,
                 loop=0,
-                optimize=True
+                optimize=False  # 关闭优化以保持颜色一致性
             )
         elif output_format.lower() == 'webp':
             frames[0].save(
@@ -864,7 +981,8 @@ class CoverGeneratorService:
                 append_images=frames[1:],
                 duration=frame_duration,
                 loop=0,
-                quality=85
+                quality=85,  # 使用85质量，平衡大小和质量
+                method=4  # 使用method=4，更好的压缩
             )
         else:
             raise ValueError(f"不支持的输出格式: {output_format}")

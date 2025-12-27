@@ -57,23 +57,51 @@ export default function Covers() {
     use_title: true,
     title_text: `# 配置封面标题（按媒体库名称对应）
 # 格式如下：
+# 格式说明：
+#  1. 媒体库名称:
+#  2.   - 中文标题
+#  3.   - 英文标题
 #
-# 媒体库名称:
-#   - 中文标题
-#   - 英文标题
+# 示例（可复制修改）：
+#  1. 华语电影:
+#  2.   - 华语电影
+#  3.   - Chinese Movies
 #
-# 示例：
-华语电影:
-  - 华语电影
-  - Chinese Movies
-
-欧美电影:
-  - 欧美电影
-  - Western Movies
-
-电视剧:
-  - 电视剧
-  - TV Series
+#  4. 欧美电影:
+#  5.   - 欧美电影
+#  6.   - Western Movies
+#
+#  7. 电视剧:
+#  8.   - 电视剧
+#  9.   - TV Series
+#
+# 10. 动漫:
+# 11.   - 动漫
+# 12.   - Anime
+#
+# 13. 纪录片:
+# 14.   - 纪录片
+# 15.   - Documentary
+#
+# 16. 综艺:
+# 17.   - 综艺
+# 18.   - Variety Shows
+#
+# 19. 儿童:
+# 20.   - 儿童
+# 21.   - Kids
+#
+# 22. 音乐:
+# 23.   - 音乐
+# 24.   - Music
+#
+# 25. 体育:
+# 26.   - 体育
+# 27.   - Sports
+#
+# 28. 短剧:
+# 29.   - 短剧
+# 30.   - Short Drama
 `,
     use_blur: true,
     use_macaron: true,
@@ -85,9 +113,9 @@ export default function Covers() {
     date_font_size_ratio: 0.05,
     font_family: 'SourceHanSansCN-Bold.otf',
     is_animated: false,
-    frame_count: 30,
-    frame_duration: 50,
-    output_format: 'gif'
+    frame_count: 60,  // 提高到 60 帧，与原项目一致
+    frame_duration: 50,  // 调整到 50ms，更稳定的播放速度
+    output_format: 'webp'  // 默认使用WebP，体积更小质量更高
   })
 
   useEffect(() => {
@@ -120,32 +148,48 @@ export default function Covers() {
     setError(null)
     try {
       const selectedLib = libraries.find((lib: Library) => lib.id === selectedLibrary)
+      const requestData = {
+        library_id: selectedLibrary,
+        library_name: selectedLib?.name || '',
+        title: config.title_text || selectedLib?.name || '',
+        subtitle: '',
+        ...config
+      }
+      
+      console.log('🎬 发送封面生成请求:', requestData)
+      
       const response = await fetch('/api/cover/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          library_id: selectedLibrary,
-          library_name: selectedLib?.name || '',
-          title: config.title_text || selectedLib?.name || '',
-          subtitle: '',
-          ...config
-        })
+        body: JSON.stringify(requestData)
       })
+
+      console.log('📡 响应状态:', response.status, response.statusText)
 
       if (response.ok) {
         const blob = await response.blob()
+        console.log('✅ 封面生成成功，大小:', blob.size, 'bytes, 类型:', blob.type)
         const url = URL.createObjectURL(blob)
         if (generatedImage) {
           URL.revokeObjectURL(generatedImage)
         }
         setGeneratedImage(url)
       } else {
-        const errorData = await response.json()
-        setError(`生成失败: ${errorData.detail || '未知错误'}`)
+        const errorText = await response.text()
+        console.error('❌ 服务器返回错误:', errorText)
+        let errorMsg = '生成失败'
+        try {
+          const errorData = JSON.parse(errorText)
+          errorMsg = `生成失败: ${errorData.detail || errorText}`
+        } catch {
+          errorMsg = `生成失败 (${response.status}): ${errorText.substring(0, 200)}`
+        }
+        setError(errorMsg)
       }
     } catch (error) {
-      console.error('生成封面失败:', error)
-      setError('生成封面失败，请检查网络连接')
+      console.error('❌ 封面生成异常:', error)
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      setError(`生成封面失败: ${errorMsg}`)
     } finally {
       setLoading(false)
     }
@@ -357,8 +401,8 @@ export default function Covers() {
                       onClick={() => setConfig({ ...config, style })}
                       className={`group cursor-pointer relative rounded-2xl overflow-hidden transition-all duration-300 ${
                         config.style === style
-                          ? 'ring-4 ring-blue-500 shadow-2xl scale-[1.02]'
-                          : 'ring-1 ring-gray-200 hover:ring-2 hover:ring-blue-300 hover:shadow-xl'
+                          ? 'ring-4 ring-blue-500 shadow-2xl'
+                          : 'ring-2 ring-gray-300 hover:ring-blue-400 hover:shadow-xl'
                       }`}
                     >
                       {/* 预览图 */}
@@ -366,17 +410,14 @@ export default function Covers() {
                         <img 
                           src={STYLE_INFO[style].preview} 
                           alt={STYLE_INFO[style].name}
-                          className="w-full h-full object-contain"
+                          className="w-full h-full object-cover"
                         />
-                        {config.style === style && (
-                          <div className="absolute inset-0 bg-blue-600 bg-opacity-10 backdrop-blur-[1px]"></div>
-                        )}
                       </div>
                       
                       {/* 信息卡片 */}
-                      <div className={`p-6 ${config.style === style ? 'bg-blue-50' : 'bg-white'}`}>
+                      <div className={`p-4 ${config.style === style ? 'bg-blue-50' : 'bg-white'}`}>
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-lg font-bold text-gray-900">{STYLE_INFO[style].name}</h4>
+                          <h4 className="text-base font-bold text-gray-900">{STYLE_INFO[style].name}</h4>
                           {config.style === style && (
                             <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
                               <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -388,10 +429,10 @@ export default function Covers() {
                         <p className="text-sm text-gray-600">{STYLE_INFO[style].description}</p>
                       </div>
 
-                      {/* 选中效果 */}
+                      {/* 选中标记 */}
                       {config.style === style && (
-                        <div className="absolute top-3 left-3 px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg">
-                          已选择
+                        <div className="absolute top-3 right-3 px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg">
+                          ✓ 已选择
                         </div>
                       )}
                     </div>
@@ -615,19 +656,19 @@ export default function Covers() {
                       </label>
                       <input
                         type="range"
-                        min="15"
-                        max="60"
+                        min="30"
+                        max="90"
                         step="5"
                         value={config.frame_count}
                         onChange={(e: ChangeEvent<HTMLInputElement>) => setConfig({ ...config, frame_count: parseInt(e.target.value) })}
                         className="w-full h-3 bg-white rounded-lg appearance-none cursor-pointer shadow-inner"
                         style={{
-                          background: `linear-gradient(to right, rgb(16, 185, 129) 0%, rgb(16, 185, 129) ${((config.frame_count - 15) / 45) * 100}%, #e5e7eb ${((config.frame_count - 15) / 45) * 100}%, #e5e7eb 100%)`
+                          background: `linear-gradient(to right, rgb(16, 185, 129) 0%, rgb(16, 185, 129) ${((config.frame_count - 30) / 60) * 100}%, #e5e7eb ${((config.frame_count - 30) / 60) * 100}%, #e5e7eb 100%)`
                         }}
                       />
                       <div className="flex justify-between text-xs text-gray-500 mt-2">
-                        <span>快速 (15帧)</span>
-                        <span>流畅 (60帧)</span>
+                        <span>快速 (30帧)</span>
+                        <span>极致流畅 (90帧)</span>
                       </div>
                     </div>
 
