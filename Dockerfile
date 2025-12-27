@@ -53,6 +53,9 @@ RUN playwright install chromium --with-deps || echo "Playwright install failed, 
 # 复制后端代码
 COPY backend/ .
 
+# 复制字体文件
+COPY res/fonts/ /app/res/fonts/
+
 # 复制构建好的前端代码
 COPY --from=frontend-builder /app/frontend/dist /app/frontend
 

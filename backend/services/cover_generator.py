@@ -324,9 +324,9 @@ class CoverGeneratorService:
         """
         draw = ImageDraw.Draw(canvas)
         
-        # 加载字体
-        zh_font_path = self.font_dir / "SourceHanSerifSC-Heavy.otf"
-        en_font_path = self.font_dir / "Bebas-Regular.ttf"
+        # 加载字体（使用MoviePilot-Plugins的字体）
+        zh_font_path = self.font_dir / "multi_1_zh.ttf"
+        en_font_path = self.font_dir / "multi_1_en.otf"
         
         logger.info(f"动图标题字体路径: 中文={zh_font_path}, 英文={en_font_path}")
         
@@ -634,9 +634,9 @@ class CoverGeneratorService:
             zh_font_size = int(canvas_height * 0.17)
             en_font_size = int(canvas_height * 0.07)
             
-            # 加载字体
-            zh_font_path = self.font_dir / "SourceHanSerifSC-Heavy.otf"
-            en_font_path = self.font_dir / "Bebas-Regular.ttf"
+            # 加载字体（使用MoviePilot-Plugins的字体）
+            zh_font_path = self.font_dir / "multi_1_zh.ttf"
+            en_font_path = self.font_dir / "multi_1_en.otf"
             
             logger.info(f"multi_1 字体路径: 中文={zh_font_path}, 英文={en_font_path}")
             
@@ -954,9 +954,9 @@ class CoverGeneratorService:
         zh_font_size = int(canvas_size[1] * 0.17)  # 1080 * 0.17 = 183px
         en_font_size = int(canvas_size[1] * 0.07)  # 1080 * 0.07 = 75px
         
-        # 中英文字体路径
-        zh_font_path = self.font_dir / "SourceHanSerifSC-Heavy.otf"
-        en_font_path = self.font_dir / "Bebas-Regular.ttf"
+        # 中英文字体路径（使用MoviePilot-Plugins的字体）
+        zh_font_path = self.font_dir / "multi_1_zh.ttf"
+        en_font_path = self.font_dir / "multi_1_en.otf"
         
         logger.info(f"字体路径: 中文={zh_font_path}, 英文={en_font_path}")
         
@@ -1135,9 +1135,9 @@ class CoverGeneratorService:
         zh_font_size = int(canvas_size[1] * 0.17)
         en_font_size = int(canvas_size[1] * 0.07)
         
-        # 加载字体
-        zh_font_path = self.font_dir / "SourceHanSerifSC-Heavy.otf"
-        en_font_path = self.font_dir / "Bebas-Regular.ttf"
+        # 加载字体（使用MoviePilot-Plugins的字体）
+        zh_font_path = self.font_dir / "multi_1_zh.ttf"
+        en_font_path = self.font_dir / "multi_1_en.otf"
         
         logger.info(f"single_2 字体路径: 中文={zh_font_path}, 英文={en_font_path}")
         
