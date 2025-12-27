@@ -733,13 +733,23 @@ class CoverGeneratorService:
         left_center_y = canvas_size[1] // 2
         
         # 加载字体
+        zh_font_size = int(canvas_size[1] * 0.17)  # 1080 * 0.17 = 183px
+        en_font_size = int(canvas_size[1] * 0.07)  # 1080 * 0.07 = 75px
+        
+        logger.info(f"字体大小计算: canvas_height={canvas_size[1]}, zh={zh_font_size}px, en={en_font_size}px")
+        
         try:
-            zh_font = ImageFont.truetype(str(self._get_font_path()), int(canvas_size[1] * 0.17))
-            en_font = ImageFont.truetype(str(self._get_font_path()), int(canvas_size[1] * 0.07))
-        except:
-            logger.warning("加载字体失败，使用默认字体")
+            font_path = self._get_font_path()
+            logger.info(f"字体路径: {font_path}")
+            zh_font = ImageFont.truetype(str(font_path), zh_font_size)
+            en_font = ImageFont.truetype(str(font_path), en_font_size)
+            logger.info(f"字体加载成功")
+        except Exception as e:
+            logger.error(f"加载字体失败: {e}，使用默认字体")
             zh_font = ImageFont.load_default()
             en_font = ImageFont.load_default()
+        
+        logger.info(f"准备添加标题: title='{title}' (len={len(title) if title else 0}), subtitle='{subtitle}' (len={len(subtitle) if subtitle else 0})")
         
         text_color = (255, 255, 255, 229)
         shadow_color = darken_color(bg_color, 0.8) + (75,)
