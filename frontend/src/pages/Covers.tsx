@@ -55,7 +55,26 @@ export default function Covers() {
   const [config, setConfig] = useState<CoverConfig>({
     style: 'multi_1',
     use_title: true,
-    title_text: '',
+    title_text: `# 配置封面标题（按媒体库名称对应）
+# 格式如下：
+#
+# 媒体库名称:
+#   - 中文标题
+#   - 英文标题
+#
+# 示例：
+华语电影:
+  - 华语电影
+  - Chinese Movies
+
+欧美电影:
+  - 欧美电影
+  - Western Movies
+
+电视剧:
+  - 电视剧
+  - TV Series
+`,
     use_blur: true,
     use_macaron: true,
     use_film_grain: true,
@@ -252,12 +271,32 @@ export default function Covers() {
                     <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                     </svg>
-                    封面标题配置
+                    中英标题配置
                   </h4>
                   
                   <div className="space-y-4">
+                    <div className="bg-blue-100 border-l-4 border-blue-500 p-4 rounded">
+                      <p className="text-sm text-blue-900">
+                        <strong>ℹ️ 提示：</strong>未配置的媒体库将默认使用媒体库名称作为封面中文标题，无副标题
+                      </p>
+                    </div>
+                    
                     <div>
-                      <label className="flex items-center gap-3 cursor-pointer mb-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        标题配置 (YAML 格式)
+                      </label>
+                      <textarea
+                        value={config.title_text}
+                        onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setConfig({ ...config, title_text: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-900 text-green-400 font-mono text-sm border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        rows={15}
+                        placeholder={`# 配置封面标题（按媒体库名称对应）\n# 格式如下：\n#\n# 媒体库名称:\n#   - 中文标题\n#   - 英文标题\n#\n# 示例：\n恐师片:\n  - 恐师片\n  - Horror\n\n天堂电影:\n  - 天堂电影\n  - TV`}
+                        spellCheck={false}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="flex items-center gap-3 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={config.use_title}
@@ -266,61 +305,48 @@ export default function Covers() {
                         />
                         <span className="text-sm font-semibold text-gray-800">显示封面标题</span>
                       </label>
-                      
-                      {config.use_title && (
-                        <div className="space-y-4 pl-8">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              标题文本 <span className="text-gray-500 text-xs">(留空则使用媒体库名称)</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={config.title_text}
-                              onChange={(e: ChangeEvent<HTMLInputElement>) => setConfig({ ...config, title_text: e.target.value })}
-                              placeholder="例如：动画电影、恐怖片..."
-                              className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                            />
-                          </div>
-                          
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">字体选择</label>
-                            <select
-                              value={config.font_family}
-                              onChange={(e: ChangeEvent<HTMLSelectElement>) => setConfig({ ...config, font_family: e.target.value })}
-                              className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                            >
-                              <option value="SourceHanSansCN-Bold.otf">思源黑体 Bold</option>
-                              <option value="SourceHanSansCN-Regular.otf">思源黑体 Regular</option>
-                              <option value="SourceHanSerifCN-Bold.otf">思源宋体 Bold</option>
-                              <option value="NotoSansSC-Bold.otf">Noto Sans SC Bold</option>
-                            </select>
-                          </div>
-                          
-                          <div>
-                            <label className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-gray-700">字体大小</span>
-                              <span className="text-sm font-bold text-blue-600">{(config.font_size_ratio * 100).toFixed(0)}%</span>
-                            </label>
-                            <input
-                              type="range"
-                              min="0.05"
-                              max="0.25"
-                              step="0.01"
-                              value={config.font_size_ratio}
-                              onChange={(e: ChangeEvent<HTMLInputElement>) => setConfig({ ...config, font_size_ratio: parseFloat(e.target.value) })}
-                              className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                              style={{
-                                background: `linear-gradient(to right, rgb(59, 130, 246) 0%, rgb(59, 130, 246) ${((config.font_size_ratio - 0.05) / 0.2) * 100}%, #e5e7eb ${((config.font_size_ratio - 0.05) / 0.2) * 100}%, #e5e7eb 100%)`
-                              }}
-                            />
-                            <div className="flex justify-between text-xs text-gray-500 mt-1">
-                              <span>较小 (5%)</span>
-                              <span>较大 (25%)</span>
-                            </div>
+                    </div>
+                    
+                    {config.use_title && (
+                      <div className="space-y-4 pl-8">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">字体选择</label>
+                          <select
+                            value={config.font_family}
+                            onChange={(e: ChangeEvent<HTMLSelectElement>) => setConfig({ ...config, font_family: e.target.value })}
+                            className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          >
+                            <option value="SourceHanSansCN-Bold.otf">思源黑体 Bold</option>
+                            <option value="SourceHanSansCN-Regular.otf">思源黑体 Regular</option>
+                            <option value="SourceHanSerifCN-Bold.otf">思源宋体 Bold</option>
+                            <option value="NotoSansSC-Bold.otf">Noto Sans SC Bold</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-700">字体大小</span>
+                            <span className="text-sm font-bold text-blue-600">{(config.font_size_ratio * 100).toFixed(0)}%</span>
+                          </label>
+                          <input
+                            type="range"
+                            min="0.05"
+                            max="0.25"
+                            step="0.01"
+                            value={config.font_size_ratio}
+                            onChange={(e: ChangeEvent<HTMLInputElement>) => setConfig({ ...config, font_size_ratio: parseFloat(e.target.value) })}
+                            className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            style={{
+                              background: `linear-gradient(to right, rgb(59, 130, 246) 0%, rgb(59, 130, 246) ${((config.font_size_ratio - 0.05) / 0.2) * 100}%, #e5e7eb ${((config.font_size_ratio - 0.05) / 0.2) * 100}%, #e5e7eb 100%)`
+                            }}
+                          />
+                          <div className="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>较小 (5%)</span>
+                            <span>较大 (25%)</span>
                           </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
