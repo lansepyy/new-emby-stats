@@ -198,9 +198,20 @@ class CoverGeneratorService:
         self.cache_dir = Path("/tmp/cover_cache")
         self.cache_dir.mkdir(exist_ok=True, parents=True)
         
-        # 字体路径
-        self.font_dir = Path(__file__).parent.parent.parent / "res" / "fonts"
-        self.font_dir.mkdir(exist_ok=True, parents=True)
+        # 字体路径 - 在Docker容器中使用绝对路径
+        self.font_dir = Path("/app/res/fonts")
+        if not self.font_dir.exists():
+            # 如果容器路径不存在，尝试相对路径（用于本地开发）
+            self.font_dir = Path(__file__).parent.parent.parent / "res" / "fonts"
+            self.font_dir.mkdir(exist_ok=True, parents=True)
+        
+        # 记录字体目录和文件状态
+        logger.info(f"字体目录: {self.font_dir}")
+        logger.info(f"字体目录是否存在: {self.font_dir.exists()}")
+        if self.font_dir.exists():
+            font_files = list(self.font_dir.glob("*"))
+            logger.info(f"字体目录中的文件: {[f.name for f in font_files]}")
+
     
     async def get_library_list(self) -> List[Dict[str, Any]]:
         """获取媒体库列表"""
@@ -527,10 +538,21 @@ class CoverGeneratorService:
         # 创建画布
         result = colored_bg_img.convert("RGBA")
         
-        # 将海报分组（每组3张）
+        # 重新排列海报为列优先顺序（参考 jellyfin-library-poster）
+        # 原始顺序: 1,2,3,4,5,6,7,8,9
+        # 列优先: 第1列(1,4,7), 第2列(2,5,8), 第3列(3,6,9)
+        # 最终顺序: 1,4,7, 2,5,8, 3,6,9
+        reordered_posters = []
+        for col in range(cols):
+            for row in range(rows):
+                idx = row * cols + col
+                if idx < len(posters):
+                    reordered_posters.append(posters[idx])
+        
+        # 将重排后的海报分组（每组3张为一列）
         grouped_posters = []
-        for i in range(0, len(posters), rows):
-            grouped_posters.append(posters[i:i+rows])
+        for i in range(0, len(reordered_posters), rows):
+            grouped_posters.append(reordered_posters[i:i+rows])
         
         # 处理每一列
         for col_index, column_posters in enumerate(grouped_posters):
