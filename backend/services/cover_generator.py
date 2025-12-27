@@ -605,57 +605,179 @@ class CoverGeneratorService:
         blur_size: int = 50,
         color_ratio: float = 0.8
     ) -> Optional[bytes]:
-        """生成单图马卡龙风格封面"""
-        logger.info(f"开始生成单图马卡龙封面: {library_name}")
+        """
+        生成单图马卡龙风格封面 - Style Single 1
+        参考 MoviePilot-Plugins 的实现
+        """
+        logger.info(f"开始生成单图封面: {library_name}")
         
         # 获取一个随机项目作为主图
         items = await self.get_library_items(library_id, limit=1, sort_by="Random")
         if not items:
+            logger.warning(f"未获取到媒体库项目: {library_name}")
             return None
         
         poster_data = await self.download_poster(items[0]["Id"], items[0]["Name"])
         if not poster_data:
+            logger.warning(f"下载海报失败: {library_name}")
             return None
         
         try:
-            poster_img = Image.open(io.BytesIO(poster_data))
-        except:
+            original_img = Image.open(io.BytesIO(poster_data)).convert("RGB")
+        except Exception as e:
+            logger.error(f"打开海报失败: {e}")
             return None
         
         # 画布尺寸
         canvas_size = (1920, 1080)
         
-        # 提取马卡龙颜色
-        macaron_colors = find_dominant_macaron_colors(poster_img)
-        if not macaron_colors:
-            macaron_colors = [(200, 150, 200)]
+        # 提取马卡龙风格的颜色
+        macaron_colors = find_dominant_macaron_colors(original_img, num_colors=6)
+        if len(macaron_colors) < 3:
+            # 备选颜色
+            macaron_colors = [
+                (237, 159, 77),    # 杏色
+                (186, 225, 255),   # 淡蓝色
+                (255, 223, 186),   # 浅橘色
+                (202, 231, 200),   # 淡绿色
+            ]
         
-        # 创建背景
-        bg_color = macaron_colors[0]
-        canvas = Image.new('RGB', canvas_size, bg_color)
+        # 处理颜色
+        bg_color = darken_color(macaron_colors[0], 0.85)  # 背景色
+        card_colors = [macaron_colors[1] if len(macaron_colors) > 1 else macaron_colors[0], 
+                      macaron_colors[2] if len(macaron_colors) > 2 else macaron_colors[0]]  # 卡片颜色
         
-        # 添加模糊的海报作为背景
-        bg_poster = poster_img.copy()
-        bg_poster = bg_poster.resize(canvas_size, Image.LANCZOS)
-        bg_poster = bg_poster.filter(ImageFilter.GaussianBlur(blur_size))
+        # 1. 创建背景
+        bg_img = original_img.copy()
+        bg_img = ImageOps.fit(bg_img, canvas_size, method=Image.LANCZOS)
+        bg_img = bg_img.filter(ImageFilter.GaussianBlur(radius=int(blur_size)))
         
-        # 混合
-        canvas = Image.blend(canvas, bg_poster, color_ratio)
+        # 将背景图片与背景色混合
+        bg_img_array = np.array(bg_img, dtype=float)
+        bg_color_array = np.array([[bg_color]], dtype=float)
+        blended_bg = bg_img_array * (1 - float(color_ratio)) + bg_color_array * float(color_ratio)
+        blended_bg = np.clip(blended_bg, 0, 255).astype(np.uint8)
+        blended_bg_img = Image.fromarray(blended_bg)
         
         # 添加胶片颗粒
         if use_film_grain:
-            canvas = add_film_grain(canvas, intensity=0.05)
+            blended_bg_img = add_film_grain(blended_bg_img, intensity=0.03)
         
-        # 使用左侧标题布局（与动图一致）
+        # 创建画布
+        canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+        canvas.paste(blended_bg_img)
+        
+        # 2. 创建卡片效果
+        square_img = crop_to_square(original_img)
+        card_size = int(canvas_size[1] * 0.7)  # 卡片尺寸为画布高度的70%
+        square_img = square_img.resize((card_size, card_size), Image.LANCZOS)
+        
+        # 主卡片
+        main_card = add_rounded_corners(square_img, radius=card_size//8)
+        main_card = main_card.convert("RGBA")
+        
+        # 辅助卡片1 (中间层)
+        aux_card1 = square_img.copy().filter(ImageFilter.GaussianBlur(radius=8))
+        aux_card1_array = np.array(aux_card1, dtype=float)
+        card_color1_array = np.array([[card_colors[0]]], dtype=float)
+        blended_card1 = aux_card1_array * 0.5 + card_color1_array * 0.5
+        blended_card1 = np.clip(blended_card1, 0, 255).astype(np.uint8)
+        aux_card1 = Image.fromarray(blended_card1)
+        aux_card1 = add_rounded_corners(aux_card1, radius=card_size//8)
+        aux_card1 = aux_card1.convert("RGBA")
+        
+        # 辅助卡片2 (底层)
+        aux_card2 = square_img.copy().filter(ImageFilter.GaussianBlur(radius=16))
+        aux_card2_array = np.array(aux_card2, dtype=float)
+        card_color2_array = np.array([[card_colors[1]]], dtype=float)
+        blended_card2 = aux_card2_array * 0.4 + card_color2_array * 0.6
+        blended_card2 = np.clip(blended_card2, 0, 255).astype(np.uint8)
+        aux_card2 = Image.fromarray(blended_card2)
+        aux_card2 = add_rounded_corners(aux_card2, radius=card_size//8)
+        aux_card2 = aux_card2.convert("RGBA")
+        
+        # 3. 添加阴影和旋转，放置卡片
+        center_x = int(canvas_size[0] - canvas_size[1] * 0.5)
+        center_y = int(canvas_size[1] * 0.5)
+        center_pos = (center_x, center_y)
+        
+        rotation_angles = [36, 18, 0]  # 底层、中间层、顶层
+        shadow_configs = [
+            {'offset': (10, 16), 'radius': 12, 'opacity': 0.4},
+            {'offset': (15, 22), 'radius': 15, 'opacity': 0.5},
+            {'offset': (20, 26), 'radius': 18, 'opacity': 0.6},
+        ]
+        
+        cards_canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+        cards = [aux_card2, aux_card1, main_card]
+        
+        for card, angle, shadow_config in zip(cards, rotation_angles, shadow_configs):
+            cards_canvas = add_shadow_and_rotate(
+                cards_canvas, card, angle,
+                offset=shadow_config['offset'],
+                radius=shadow_config['radius'],
+                opacity=shadow_config['opacity'],
+                center_pos=center_pos
+            )
+        
+        canvas = Image.alpha_composite(canvas.convert("RGBA"), cards_canvas)
+        
+        # 4. 添加文字
+        text_layer = Image.new('RGBA', canvas_size, (255, 255, 255, 0))
+        shadow_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(text_layer)
+        shadow_draw = ImageDraw.Draw(shadow_layer)
+        
+        # 左侧区域中心
+        left_center_x = int(canvas_size[0] * 0.25)
+        left_center_y = canvas_size[1] // 2
+        
+        # 加载字体
+        try:
+            zh_font = ImageFont.truetype(str(self._get_font_path()), int(canvas_size[1] * 0.17))
+            en_font = ImageFont.truetype(str(self._get_font_path()), int(canvas_size[1] * 0.07))
+        except:
+            logger.warning("加载字体失败，使用默认字体")
+            zh_font = ImageFont.load_default()
+            en_font = ImageFont.load_default()
+        
+        text_color = (255, 255, 255, 229)
+        shadow_color = darken_color(bg_color, 0.8) + (75,)
+        shadow_offset = 12
+        
+        # 中文标题
         if title:
-            # 提取色块颜色
-            c = macaron_colors[0] if macaron_colors else (100, 150, 200)
-            random_color = (c[0], c[1], c[2], 255) if len(c) == 3 else tuple(list(c)[:3] + [255])
-            canvas = self._add_title_overlay(canvas, title, subtitle, random_color)
+            zh_bbox = draw.textbbox((0, 0), title, font=zh_font)
+            zh_w = zh_bbox[2] - zh_bbox[0]
+            zh_h = zh_bbox[3] - zh_bbox[1]
+            zh_x = left_center_x - zh_w // 2
+            zh_y = left_center_y - zh_h - int(canvas_size[1] * 0.035) - 5
+            
+            # 阴影
+            for offset in range(3, shadow_offset + 1, 2):
+                shadow_draw.text((zh_x + offset, zh_y + offset), title, font=zh_font, fill=shadow_color)
+            draw.text((zh_x, zh_y), title, font=zh_font, fill=text_color)
+        
+        # 英文副标题
+        if subtitle:
+            en_bbox = draw.textbbox((0, 0), subtitle, font=en_font)
+            en_w = en_bbox[2] - en_bbox[0]
+            en_h = en_bbox[3] - en_bbox[1]
+            en_x = left_center_x - en_w // 2
+            en_y = left_center_y + int(canvas_size[1] * 0.035)
+            
+            for offset in range(2, shadow_offset // 2 + 1):
+                shadow_draw.text((en_x + offset, en_y + offset), subtitle, font=en_font, fill=shadow_color)
+            draw.text((en_x, en_y), subtitle, font=en_font, fill=text_color)
+        
+        # 合成阴影和文字
+        blurred_shadow = shadow_layer.filter(ImageFilter.GaussianBlur(radius=shadow_offset))
+        canvas = Image.alpha_composite(canvas, blurred_shadow)
+        canvas = Image.alpha_composite(canvas, text_layer)
         
         # 转换为字节
         output = io.BytesIO()
-        canvas.save(output, format="PNG", quality=95)
+        canvas.convert("RGB").save(output, format="PNG", quality=95)
         output.seek(0)
         
         logger.info(f"单图封面生成完成: {library_name}")
