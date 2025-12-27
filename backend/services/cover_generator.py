@@ -228,19 +228,14 @@ class CoverGeneratorService:
         
         return []
     
-    async def get_library_items(self, library_id: str, limit: int = 50, sort_by: str = "DateCreated") -> List[Dict[str, Any]]:
-        """获取媒体库中的项目"""
+    async def get_library_items(self, library_id: str, limit: int = 50, sort_by: str = "DateCreated", start_index: int = 0) -> List[Dict[str, Any]]:
+        """获取媒体库中的项目,支持分页"""
         try:
             api_key = await self.emby_service.get_api_key()
             user_id = await self.emby_service.get_user_id()
             
             if not api_key or not user_id:
                 return []
-            
-            # 支持随机排序
-            if sort_by == "Random":
-                random_seed = random.randint(1000000, 9999999)
-                sort_by = f"Random&RandomSeed={random_seed}"
             
             url = f"{settings.EMBY_URL}/Users/{user_id}/Items"
             params = {
@@ -250,7 +245,8 @@ class CoverGeneratorService:
                 "SortOrder": "Descending",
                 "IncludeItemTypes": "Movie,Series,Audio,Music,Game,Book,MusicVideo,BoxSet",
                 "Limit": limit,
-                "Fields": "PrimaryImageAspectRatio,ImageTags",
+                "StartIndex": start_index,
+                "Fields": "PrimaryImageAspectRatio,ImageTags,BackdropImageTags,ParentBackdropImageTags",
                 "api_key": api_key
             }
             
