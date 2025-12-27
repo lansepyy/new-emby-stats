@@ -107,6 +107,8 @@ export default function Covers() {
         body: JSON.stringify({
           library_id: selectedLibrary,
           library_name: selectedLib?.name || '',
+          title: config.title_text || selectedLib?.name || '',
+          subtitle: '',
           ...config
         })
       })
@@ -338,7 +340,7 @@ export default function Covers() {
                         <img 
                           src={STYLE_INFO[style].preview} 
                           alt={STYLE_INFO[style].name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                         />
                         {config.style === style && (
                           <div className="absolute inset-0 bg-blue-600 bg-opacity-10 backdrop-blur-[1px]"></div>
