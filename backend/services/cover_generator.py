@@ -890,6 +890,8 @@ class CoverGeneratorService:
         self,
         library_id: str,
         library_name: str,
+        title: str = "",
+        subtitle: str = "",
         style: str = "multi_1",
         frame_count: int = 30,
         frame_duration: int = 50,
@@ -965,6 +967,12 @@ class CoverGeneratorService:
             # 合成渐变背景
             frame_with_bg = gradient_bg.copy()
             frame_with_bg.paste(frame, (0, 0), frame if frame.mode == 'RGBA' else None)
+            
+            # 添加标题叠加层(在缩放之前)
+            if use_title and (title or subtitle):
+                # 提取色块颜色
+                random_color = (macaron_colors[0][0], macaron_colors[0][1], macaron_colors[0][2], 255) if macaron_colors else (100, 150, 200, 255)
+                frame_with_bg = self._add_title_overlay(frame_with_bg, title or library_name, subtitle, random_color)
             
             # 添加胶片颗粒
             if use_film_grain:
