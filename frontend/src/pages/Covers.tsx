@@ -444,7 +444,7 @@ export default function Covers() {
                       {/* 预览图 */}
                       <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden flex items-center justify-center">
                         <img 
-                          src={config.is_animated && style === 'multi_1' ? '/multi_1_animated.webp' : STYLE_INFO[style].preview} 
+                          src={STYLE_INFO[style].preview} 
                           alt={STYLE_INFO[style].name}
                           className="w-full h-full object-contain"
                         />
@@ -638,12 +638,12 @@ export default function Covers() {
                     <div className="text-lg font-bold">动画封面</div>
                     <div className="text-xs opacity-80">WebP 格式</div>
                   </div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="grid grid-cols-3 gap-1 w-3/4 h-3/4 animate-pulse">
-                      {[1,2,3,4,5,6,7,8,9].map(i => (
-                        <div key={i} className={`aspect-[2/3] bg-white/20 backdrop-blur-sm rounded shadow`}></div>
-                      ))}
-                    </div>
+                  <div className="absolute inset-0 flex items-center justify-center p-8">
+                    <img 
+                      src="/multi_1_animated.webp" 
+                      alt="WebP动画预览"
+                      className="w-full h-full object-contain rounded-lg shadow-2xl"
+                    />
                   </div>
                   <div className="absolute bottom-4 right-4 text-white text-xs bg-black/30 px-3 py-1 rounded-full">
                     ⚡ 体积更小

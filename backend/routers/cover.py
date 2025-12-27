@@ -58,8 +58,8 @@ async def generate_cover(request: GenerateCoverRequest):
     try:
         logger.info(f"收到封面生成请求: {request.library_name}, 风格: {request.style}, 动画: {request.is_animated}")
         
-        # 如果是动画封面
-        if request.is_animated:
+        # 只有multi_1风格且启用动画才生成动画封面
+        if request.is_animated and request.style == "multi_1":
             image_data = await cover_service.generate_animated_cover(
                 library_id=request.library_id,
                 library_name=request.library_name,
