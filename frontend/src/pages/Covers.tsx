@@ -52,10 +52,13 @@ export default function Covers() {
   const [uploading, setUploading] = useState(false)
   const [generatedImage, setGeneratedImage] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
-  const [config, setConfig] = useState<CoverConfig>({
-    style: 'multi_1',
-    use_title: true,
-    title_text: `# 序号格式说明：
+  
+  // 默认配置
+  const getDefaultConfig = (): CoverConfig => {
+    return {
+      style: 'multi_1',
+      use_title: true,
+      title_text: `# 序号格式说明：
 # 1. 媒体库名称:
 # 2.   - 中文标题
 # 3.   - 英文标题
@@ -101,20 +104,63 @@ export default function Covers() {
 # 29.   - 短剧
 # 30.   - Short Drama
 `,
-    use_blur: true,
-    use_macaron: true,
-    use_film_grain: true,
-    poster_count: 9,
-    blur_size: 15,
-    color_ratio: 0.7,
-    font_size_ratio: 0.12,
-    date_font_size_ratio: 0.05,
-    font_family: 'SourceHanSansCN-Bold.otf',
-    is_animated: false,
-    frame_count: 60,  // 提高到 60 帧，与原项目一致
-    frame_duration: 50,  // 调整到 50ms，更稳定的播放速度
-    output_format: 'webp'  // 默认使用WebP，体积更小质量更高
-  })
+      use_blur: true,
+      use_macaron: true,
+      use_film_grain: true,
+      poster_count: 9,
+      blur_size: 15,
+      color_ratio: 0.7,
+      font_size_ratio: 0.12,
+      date_font_size_ratio: 0.05,
+      font_family: 'SourceHanSansCN-Bold.otf',
+      is_animated: false,
+      frame_count: 60,
+      frame_duration: 50,
+      output_format: 'webp'
+    }
+  }
+  
+  const [config, setConfig] = useState<CoverConfig>(getDefaultConfig())
+  
+  // 从后端加载配置
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const response = await fetch('/api/config/cover')
+        if (response.ok) {
+          const savedConfig = await response.json()
+          setConfig(savedConfig)
+        }
+      } catch (e) {
+        console.error('加载配置失败', e)
+      }
+    }
+    loadConfig()
+  }, [])
+  
+  // 自动保存配置到后端
+  useEffect(() => {
+    const saveConfig = async () => {
+      try {
+        await fetch('/api/config/cover', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(config),
+        })
+      } catch (e) {
+        console.error('保存配置失败', e)
+      }
+    }
+    
+    // 延迟保存，避免频繁请求
+    const timer = setTimeout(() => {
+      saveConfig()
+    }, 1000)
+    
+    return () => clearTimeout(timer)
+  }, [config])
 
   useEffect(() => {
     fetchLibraries()

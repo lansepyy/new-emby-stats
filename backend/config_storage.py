@@ -32,6 +32,24 @@ DEFAULT_CONFIG = {
         "api_key": "",
         "image_base_url": "https://image.tmdb.org/t/p/original"
     },
+    "cover": {
+        "style": "multi_1",
+        "use_title": True,
+        "title_text": "",
+        "use_blur": False,
+        "use_macaron": True,
+        "use_film_grain": True,
+        "poster_count": 9,
+        "blur_size": 15,
+        "color_ratio": 0.7,
+        "font_size_ratio": 0.12,
+        "date_font_size_ratio": 0.05,
+        "font_family": "SourceHanSansCN-Bold.otf",
+        "is_animated": False,
+        "frame_count": 60,
+        "frame_duration": 50,
+        "output_format": "webp"
+    },
     "report": {
         "enabled": False,
         "daily_enabled": False,
@@ -159,6 +177,11 @@ class ConfigStorage:
         """获取报告推送配置"""
         config = self.load_config()
         return config.get("report", DEFAULT_CONFIG["report"])
+    
+    def get_cover_config(self) -> Dict[str, Any]:
+        """获取封面生成配置"""
+        config = self.load_config()
+        return config.get("cover", DEFAULT_CONFIG["cover"])
     
     def get_templates(self) -> Dict[str, Any]:
         """获取通知模板"""

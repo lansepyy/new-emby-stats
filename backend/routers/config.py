@@ -65,6 +65,25 @@ class ReportConfig(BaseModel):
     channels: ReportChannels = ReportChannels()
 
 
+class CoverConfig(BaseModel):
+    style: str = "multi_1"
+    use_title: bool = True
+    title_text: str = ""
+    use_blur: bool = False
+    use_macaron: bool = True
+    use_film_grain: bool = True
+    poster_count: int = 9
+    blur_size: int = 15
+    color_ratio: float = 0.7
+    font_size_ratio: float = 0.12
+    date_font_size_ratio: float = 0.05
+    font_family: str = "SourceHanSansCN-Bold.otf"
+    is_animated: bool = False
+    frame_count: int = 60
+    frame_duration: int = 50
+    output_format: str = "webp"
+
+
 class NotificationConfig(BaseModel):
     telegram: TelegramConfig = TelegramConfig()
     wecom: WecomConfig = WecomConfig()
@@ -76,6 +95,26 @@ class NotificationConfig(BaseModel):
 
 class NotificationTemplates(BaseModel):
     templates: Dict[str, Dict[str, str]]
+
+
+@router.get("/cover")
+async def get_cover_config() -> CoverConfig:
+    """获取封面生成配置"""
+    try:
+        cover_config = config_storage.get_cover_config()
+        return CoverConfig(**cover_config)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/cover")
+async def update_cover_config(cover_config: CoverConfig):
+    """更新封面生成配置"""
+    try:
+        config_storage.update_section("cover", cover_config.dict())
+        return {"success": True, "message": "封面配置已保存"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/notification")
