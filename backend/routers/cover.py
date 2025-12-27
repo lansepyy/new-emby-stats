@@ -95,10 +95,11 @@ async def generate_cover(request: GenerateCoverRequest):
                 subtitle=request.subtitle,
                 poster_count=request.poster_count,
                 use_blur=request.use_blur,
-                use_macaron=request.use_macaron
+                blur_size=request.blur_size,
+                color_ratio=request.color_ratio
             )
-        elif request.style in ["single_1", "single_2"]:
-            # 单图马卡龙风格
+        elif request.style == "single_1":
+            # 单图风格1 - 卡片旋转
             image_data = await cover_service.generate_style_single(
                 library_id=request.library_id,
                 library_name=request.library_name,
@@ -107,6 +108,14 @@ async def generate_cover(request: GenerateCoverRequest):
                 use_film_grain=request.use_film_grain,
                 blur_size=request.blur_size,
                 color_ratio=request.color_ratio
+            )
+        elif request.style == "single_2":
+            # 单图风格2 - 斜线分割
+            image_data = await cover_service.generate_style_single_2(
+                library_id=request.library_id,
+                library_name=request.library_name,
+                title=request.title,
+                subtitle=request.subtitle
             )
         else:
             raise HTTPException(status_code=400, detail=f"不支持的风格: {request.style}")

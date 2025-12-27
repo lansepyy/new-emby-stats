@@ -564,7 +564,7 @@ class CoverGeneratorService:
                         draw = ImageDraw.Draw(mask)
                         draw.rounded_rectangle(
                             [(0, 0), (cell_width, cell_height)],
-                            radius=corner_radius,
+                            radius=int(corner_radius),
                             fill=255
                         )
                         
@@ -1022,19 +1022,19 @@ class CoverGeneratorService:
     
     async def generate_style_single_2(
         self, 
+        library_id: str,
         library_name: str,
-        image_path: str,
         title: str = "",
         subtitle: str = ""
-    ) -> bytes:
+    ) -> Optional[bytes]:
         """
         生成单图样式2封面 - 斜线分割设计
         左侧：模糊背景 + 彩色混合 + 居中文字
         右侧：右对齐裁剪的原图
         
         Args:
+            library_id: 媒体库ID
             library_name: 媒体库名称
-            image_path: 源图片路径
             title: 中文标题
             subtitle: 英文副标题
             
@@ -1042,6 +1042,23 @@ class CoverGeneratorService:
             PNG图片字节数据
         """
         logger.info(f"开始生成单图样式2封面: {library_name}")
+        
+        # 获取一个随机项目作为主图
+        items = await self.get_library_items(library_id, limit=1, sort_by="Random")
+        if not items:
+            logger.warning(f"未获取到媒体库项目: {library_name}")
+            return None
+        
+        poster_data = await self.download_poster(items[0]["Id"], items[0]["Name"])
+        if not poster_data:
+            logger.warning(f"下载海报失败: {library_name}")
+            return None
+        
+        try:
+            fg_img_original = Image.open(io.BytesIO(poster_data)).convert("RGB")
+        except Exception as e:
+            logger.error(f"打开海报失败: {e}")
+            return None
         
         # 画布尺寸
         canvas_size = (1920, 1080)
@@ -1051,7 +1068,6 @@ class CoverGeneratorService:
         split_bottom = 0.4  # 底部分割点在40%
         
         # 加载并处理前景图片（右对齐）
-        fg_img_original = Image.open(image_path).convert("RGB")
         fg_img = align_image_right(fg_img_original, canvas_size)
         
         # 提取马卡龙风格主色调
@@ -1075,9 +1091,8 @@ class CoverGeneratorService:
         
         shadow_color = darken_color(bg_color, 0.5)  # 阴影颜色加深到50%
         
-        # 加载背景图片
-        bg_img_original = Image.open(image_path).convert("RGB")
-        bg_img = ImageOps.fit(bg_img_original, canvas_size, method=Image.LANCZOS)
+        # 加载背景图片（使用同一张海报）
+        bg_img = ImageOps.fit(fg_img_original.copy(), canvas_size, method=Image.LANCZOS)
         
         # 强烈模糊化背景图
         blur_size = 50
