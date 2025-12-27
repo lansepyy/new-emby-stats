@@ -620,32 +620,32 @@ export default function Covers() {
               
               {/* 动画预览卡片 */}
               <div className="grid grid-cols-2 gap-6 mb-6">
-                <div className="bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 rounded-2xl p-6 aspect-[2/3] relative overflow-hidden group">
-                  <div className="absolute top-4 left-4 text-white z-10">
-                    <div className="text-lg font-bold">动画封面</div>
+                <div className="bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 rounded-2xl p-4 relative overflow-hidden group" style={{ aspectRatio: '16/9' }}>
+                  <div className="absolute top-3 left-3 text-white z-10">
+                    <div className="text-sm font-bold">动画封面</div>
                     <div className="text-xs opacity-80">GIF 格式</div>
                   </div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-1/2 aspect-[2/3] bg-white/20 backdrop-blur-sm rounded-xl shadow-2xl animate-pulse"></div>
+                  <div className="absolute inset-0 flex items-center justify-center p-6">
+                    <div className="w-full h-full bg-white/20 backdrop-blur-sm rounded-lg shadow-2xl animate-pulse"></div>
                   </div>
-                  <div className="absolute bottom-4 right-4 text-white text-xs bg-black/30 px-3 py-1 rounded-full">
+                  <div className="absolute bottom-3 right-3 text-white text-xs bg-black/30 px-2 py-1 rounded-full">
                     ▶️ 动态播放
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-2xl p-6 aspect-[2/3] relative overflow-hidden">
-                  <div className="absolute top-4 left-4 text-white z-10">
-                    <div className="text-lg font-bold">动画封面</div>
+                <div className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-2xl p-4 relative overflow-hidden" style={{ aspectRatio: '16/9' }}>
+                  <div className="absolute top-3 left-3 text-white z-10">
+                    <div className="text-sm font-bold">动画封面</div>
                     <div className="text-xs opacity-80">WebP 格式</div>
                   </div>
-                  <div className="absolute inset-0 flex items-center justify-center p-8">
+                  <div className="absolute inset-0 flex items-center justify-center p-6">
                     <img 
                       src="/multi_1_animated.webp" 
                       alt="WebP动画预览"
                       className="w-full h-full object-contain rounded-lg shadow-2xl"
                     />
                   </div>
-                  <div className="absolute bottom-4 right-4 text-white text-xs bg-black/30 px-3 py-1 rounded-full">
+                  <div className="absolute bottom-3 right-3 text-white text-xs bg-black/30 px-2 py-1 rounded-full">
                     ⚡ 体积更小
                   </div>
                 </div>

@@ -21,7 +21,8 @@ from config import settings
 from services.emby import EmbyService
 from services.image_utils import (
     crop_to_square, add_rounded_corners, add_shadow_and_rotate,
-    darken_color, find_dominant_macaron_colors, add_film_grain
+    darken_color, find_dominant_macaron_colors, add_film_grain,
+    align_image_right, create_diagonal_mask, create_shadow_mask
 )
 
 logger = logging.getLogger(__name__)
@@ -324,14 +325,25 @@ class CoverGeneratorService:
         draw = ImageDraw.Draw(canvas)
         
         # 加载字体
-        try:
-            # 中文标题字体 163px
-            title_font = ImageFont.truetype(str(self._get_font_path()), 163)
-            # 英文副标题字体 50px
-            subtitle_font = ImageFont.truetype(str(self._get_font_path()), 50)
-        except Exception as e:
-            logger.warning(f"加载字体失败: {e}, 使用默认字体")
+        zh_font_path = self.font_dir / "SourceHanSerifSC-Heavy.otf"
+        en_font_path = self.font_dir / "Bebas-Regular.ttf"
+        
+        logger.info(f"动图标题字体路径: 中文={zh_font_path}, 英文={en_font_path}")
+        
+        # 中文标题字体 163px
+        if zh_font_path.exists():
+            title_font = ImageFont.truetype(str(zh_font_path), 163)
+            logger.info(f"动图中文字体加载成功")
+        else:
+            logger.warning(f"中文字体不存在: {zh_font_path}, 使用默认字体")
             title_font = ImageFont.load_default()
+        
+        # 英文副标题字体 50px
+        if en_font_path.exists():
+            subtitle_font = ImageFont.truetype(str(en_font_path), 50)
+            logger.info(f"动图英文字体加载成功")
+        else:
+            logger.warning(f"英文字体不存在: {en_font_path}, 使用默认字体")
             subtitle_font = ImageFont.load_default()
         
         # 色块位置和大小 (84, 620, 22x65)
@@ -414,10 +426,24 @@ class CoverGeneratorService:
         title: str = "",
         subtitle: str = "",
         poster_count: int = 9,
-        use_blur: bool = False,
-        use_macaron: bool = True
+        use_blur: bool = True,
+        blur_size: int = 50,
+        color_ratio: float = 0.8
     ) -> Optional[bytes]:
-        """生成多图拼贴风格封面（类似 jellyfin-library-poster）"""
+        """
+        生成多图拼贴风格封面（静态版本，3x3网格）
+        参考 MoviePilot-Plugins style_multi_1
+        
+        Args:
+            library_id: 媒体库ID
+            library_name: 媒体库名称
+            title: 中文标题
+            subtitle: 英文副标题
+            poster_count: 海报数量（默认9张）
+            use_blur: 是否使用模糊背景
+            blur_size: 模糊半径
+            color_ratio: 颜色混合比例
+        """
         logger.info(f"开始生成多图封面: {library_name}")
         
         # 获取海报
@@ -445,61 +471,253 @@ class CoverGeneratorService:
         cfg = self.POSTER_CONFIG
         canvas_width = cfg["CANVAS_WIDTH"]
         canvas_height = cfg["CANVAS_HEIGHT"]
-        
-        # 提取主色调
-        main_colors = find_dominant_macaron_colors(posters[0]) if use_macaron else []
-        
-        # 创建背景
-        background = create_gradient_background(canvas_width, canvas_height, main_colors)
-        
-        if use_blur:
-            background = background.filter(ImageFilter.GaussianBlur(50))
-        
-        canvas = background.convert("RGBA")
-        
-        # 生成海报列
-        cols = cfg["COLS"]
         rows = cfg["ROWS"]
-        items_per_col = rows
+        cols = cfg["COLS"]
+        cell_width = cfg["CELL_WIDTH"]
+        cell_height = cfg["CELL_HEIGHT"]
+        margin = cfg["MARGIN"]
+        corner_radius = cfg["CORNER_RADIUS"]
+        rotation_angle = cfg["ROTATION_ANGLE"]
+        start_x = cfg["START_X"]
+        start_y = cfg["START_Y"]
+        column_spacing = cfg["COLUMN_SPACING"]
         
-        for col_idx in range(cols):
-            start_idx = col_idx * items_per_col
-            end_idx = min(start_idx + items_per_col, len(posters))
-            col_posters = posters[start_idx:end_idx]
+        # 提取马卡龙风格主色调
+        vibrant_colors = find_dominant_macaron_colors(posters[0], num_colors=6)
+        
+        # 柔和的颜色备选
+        soft_colors = [
+            (237, 159, 77),
+            (255, 183, 197),
+            (186, 225, 255),
+            (255, 223, 186),
+            (202, 231, 200),
+            (245, 203, 255),
+        ]
+        
+        # 选择背景色
+        if vibrant_colors:
+            bg_color = vibrant_colors[0]
+        else:
+            bg_color = random.choice(soft_colors)
+        
+        # 创建模糊背景
+        if use_blur and posters:
+            # 使用第一张海报创建模糊背景
+            bg_img = posters[0].copy()
+            bg_img = ImageOps.fit(bg_img, (canvas_width, canvas_height), method=Image.LANCZOS)
+            bg_img = bg_img.filter(ImageFilter.GaussianBlur(radius=blur_size))
             
-            if not col_posters:
+            # 与背景色混合
+            bg_color_darkened = darken_color(bg_color, 0.85)
+            bg_img_array = np.array(bg_img, dtype=float)
+            bg_color_array = np.array([[bg_color_darkened]], dtype=float)
+            
+            # 混合背景图和颜色
+            blended_bg = bg_img_array * (1 - color_ratio) + bg_color_array * color_ratio
+            blended_bg = np.clip(blended_bg, 0, 255).astype(np.uint8)
+            colored_bg_img = Image.fromarray(blended_bg)
+            
+            # 添加胶片颗粒效果
+            colored_bg_img = add_film_grain(colored_bg_img, intensity=0.05)
+        else:
+            # 纯色背景
+            colored_bg_img = Image.new("RGB", (canvas_width, canvas_height), bg_color)
+        
+        # 创建画布
+        result = colored_bg_img.convert("RGBA")
+        
+        # 将海报分组（每组3张）
+        grouped_posters = []
+        for i in range(0, len(posters), rows):
+            grouped_posters.append(posters[i:i+rows])
+        
+        # 处理每一列
+        for col_index, column_posters in enumerate(grouped_posters):
+            if col_index >= cols:
                 break
             
-            # 创建列图片
-            col_image = self._create_column_image(col_posters, cfg)
+            # 计算当前列的 x 坐标
+            column_x = start_x + col_index * column_spacing
             
-            # 旋转
-            col_image = col_image.rotate(
-                cfg["ROTATION_ANGLE"],
-                expand=True,
-                resample=Image.BICUBIC
+            # 计算当前列所有图片组合后的高度
+            column_height = rows * cell_height + (rows - 1) * margin
+            
+            # 创建透明画布用于当前列的所有图片
+            shadow_extra_width = 40
+            shadow_extra_height = 40
+            column_image = Image.new(
+                "RGBA",
+                (cell_width + shadow_extra_width, column_height + shadow_extra_height),
+                (0, 0, 0, 0)
             )
             
-            # 计算位置
-            x = cfg["START_X"] + col_idx * cfg["COLUMN_SPACING"]
-            y = cfg["START_Y"]
+            # 在列画布上放置每张图片
+            for row_index, poster in enumerate(column_posters):
+                try:
+                    # 调整海报大小
+                    resized_poster = ImageOps.fit(poster, (cell_width, cell_height), method=Image.LANCZOS)
+                    
+                    # 创建圆角遮罩
+                    if corner_radius > 0:
+                        mask = Image.new("L", (cell_width, cell_height), 0)
+                        draw = ImageDraw.Draw(mask)
+                        draw.rounded_rectangle(
+                            [(0, 0), (cell_width, cell_height)],
+                            radius=corner_radius,
+                            fill=255
+                        )
+                        
+                        poster_with_corners = Image.new("RGBA", resized_poster.size, (0, 0, 0, 0))
+                        poster_with_corners.paste(resized_poster, (0, 0), mask)
+                        resized_poster = poster_with_corners
+                    
+                    # 添加阴影效果
+                    resized_poster_with_shadow = add_shadow(
+                        resized_poster,
+                        offset=(20, 20),
+                        shadow_color=(0, 0, 0, 216),
+                        blur_radius=20
+                    )
+                    
+                    # 计算在列画布上的位置
+                    y_position = row_index * (cell_height + margin)
+                    column_image.paste(
+                        resized_poster_with_shadow,
+                        (0, y_position),
+                        resized_poster_with_shadow
+                    )
+                
+                except Exception as e:
+                    logger.error(f"处理海报时出错: {e}")
+                    continue
             
-            # 粘贴
-            canvas.paste(col_image, (x, y), col_image)
+            # 创建旋转画布
+            import math
+            rotation_canvas_size = int(
+                math.sqrt((cell_width + shadow_extra_width) ** 2 + (column_height + shadow_extra_height) ** 2) * 1.5
+            )
+            rotation_canvas = Image.new(
+                "RGBA",
+                (rotation_canvas_size, rotation_canvas_size),
+                (0, 0, 0, 0)
+            )
+            
+            # 将列图片放在旋转画布的中央
+            paste_x = (rotation_canvas_size - cell_width) // 2
+            paste_y = (rotation_canvas_size - column_height) // 2
+            rotation_canvas.paste(column_image, (paste_x, paste_y), column_image)
+            
+            # 旋转整个列
+            rotated_column = rotation_canvas.rotate(
+                rotation_angle,
+                Image.BICUBIC,
+                expand=True
+            )
+            
+            # 粘贴到结果画布
+            result.paste(
+                rotated_column,
+                (column_x - rotated_column.width // 2, start_y - rotated_column.height // 2),
+                rotated_column
+            )
         
-        # 添加标题（使用左侧布局）
+        # ===== 添加标题 =====
         if title or subtitle:
-            # 提取色块颜色
-            c = main_colors[0] if main_colors else (100, 150, 200)
-            random_color = (c[0], c[1], c[2], 255) if len(c) == 3 else tuple(list(c)[:3] + [255])
-            canvas = self._add_title_overlay(canvas, title or library_name, subtitle, random_color)
+            text_layer = Image.new("RGBA", result.size, (255, 255, 255, 0))
+            shadow_layer = Image.new("RGBA", result.size, (0, 0, 0, 0))
+            
+            draw = ImageDraw.Draw(text_layer)
+            shadow_draw = ImageDraw.Draw(shadow_layer)
+            
+            # 字体大小
+            zh_font_size = int(canvas_height * 0.17)
+            en_font_size = int(canvas_height * 0.07)
+            
+            # 加载字体
+            zh_font_path = self.font_dir / "SourceHanSerifSC-Heavy.otf"
+            en_font_path = self.font_dir / "Bebas-Regular.ttf"
+            
+            logger.info(f"multi_1 字体路径: 中文={zh_font_path}, 英文={en_font_path}")
+            
+            if zh_font_path.exists():
+                zh_font = ImageFont.truetype(str(zh_font_path), zh_font_size)
+                logger.info(f"中文字体加载成功")
+            else:
+                logger.warning(f"中文字体不存在: {zh_font_path}，使用默认字体")
+                zh_font = ImageFont.load_default()
+            
+            if en_font_path.exists():
+                en_font = ImageFont.truetype(str(en_font_path), en_font_size)
+                logger.info(f"英文字体加载成功")
+            else:
+                logger.warning(f"英文字体不存在: {en_font_path}，使用默认字体")
+                en_font = ImageFont.load_default()
+            
+            # 计算左侧文字位置（画布四分之一处）
+            left_area_center_x = canvas_width // 4
+            left_area_center_y = canvas_height // 2
+            
+            # 文字颜色和阴影
+            text_color = (255, 255, 255, 229)
+            shadow_color = darken_color(bg_color, 0.7) + (75,)
+            shadow_offset = 12
+            
+            # 绘制中文标题
+            if title:
+                zh_bbox = draw.textbbox((0, 0), title, font=zh_font)
+                zh_text_w = zh_bbox[2] - zh_bbox[0]
+                zh_text_h = zh_bbox[3] - zh_bbox[1]
+                zh_x = left_area_center_x - zh_text_w // 2
+                zh_y = left_area_center_y - zh_text_h - en_font_size // 2 - 5
+                
+                # 阴影
+                for offset in range(3, shadow_offset + 1, 2):
+                    shadow_draw.text(
+                        (zh_x + offset, zh_y + offset),
+                        title,
+                        font=zh_font,
+                        fill=shadow_color
+                    )
+                
+                # 主文字
+                draw.text((zh_x, zh_y), title, font=zh_font, fill=text_color)
+            
+            # 绘制英文副标题
+            if subtitle:
+                en_bbox = draw.textbbox((0, 0), subtitle, font=en_font)
+                en_text_w = en_bbox[2] - en_bbox[0]
+                en_text_h = en_bbox[3] - en_bbox[1]
+                en_x = left_area_center_x - en_text_w // 2
+                
+                if title:
+                    en_y = zh_y + zh_text_h + en_font_size
+                else:
+                    en_y = left_area_center_y - en_text_h // 2
+                
+                # 阴影
+                for offset in range(2, shadow_offset // 2 + 1):
+                    shadow_draw.text(
+                        (en_x + offset, en_y + offset),
+                        subtitle,
+                        font=en_font,
+                        fill=shadow_color
+                    )
+                
+                # 主文字
+                draw.text((en_x, en_y), subtitle, font=en_font, fill=text_color)
+            
+            # 合成所有层
+            shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(radius=12))
+            result = Image.alpha_composite(result, shadow_layer)
+            result = Image.alpha_composite(result, text_layer)
         
         # 转换为字节
         output = io.BytesIO()
-        canvas.convert("RGB").save(output, format="PNG", quality=95)
+        result.convert("RGB").save(output, format="PNG", quality=95)
         output.seek(0)
         
-        logger.info(f"封面生成完成: {library_name}")
+        logger.info(f"多图封面生成完成: {library_name}")
         return output.getvalue()
     
     def _create_column_image(self, posters: List[Image.Image], cfg: Dict) -> Image.Image:
@@ -736,17 +954,26 @@ class CoverGeneratorService:
         zh_font_size = int(canvas_size[1] * 0.17)  # 1080 * 0.17 = 183px
         en_font_size = int(canvas_size[1] * 0.07)  # 1080 * 0.07 = 75px
         
-        logger.info(f"字体大小计算: canvas_height={canvas_size[1]}, zh={zh_font_size}px, en={en_font_size}px")
+        # 中英文字体路径
+        zh_font_path = self.font_dir / "SourceHanSerifSC-Heavy.otf"
+        en_font_path = self.font_dir / "Bebas-Regular.ttf"
         
-        try:
-            font_path = self._get_font_path()
-            logger.info(f"字体路径: {font_path}")
-            zh_font = ImageFont.truetype(str(font_path), zh_font_size)
-            en_font = ImageFont.truetype(str(font_path), en_font_size)
-            logger.info(f"字体加载成功")
-        except Exception as e:
-            logger.error(f"加载字体失败: {e}，使用默认字体")
+        logger.info(f"字体路径: 中文={zh_font_path}, 英文={en_font_path}")
+        
+        # 加载中文字体
+        if zh_font_path.exists():
+            zh_font = ImageFont.truetype(str(zh_font_path), zh_font_size)
+            logger.info(f"中文字体加载成功: {zh_font_path.name}")
+        else:
+            logger.warning(f"中文字体不存在: {zh_font_path}，使用默认字体")
             zh_font = ImageFont.load_default()
+        
+        # 加载英文字体
+        if en_font_path.exists():
+            en_font = ImageFont.truetype(str(en_font_path), en_font_size)
+            logger.info(f"英文字体加载成功: {en_font_path.name}")
+        else:
+            logger.warning(f"英文字体不存在: {en_font_path}，使用默认字体")
             en_font = ImageFont.load_default()
         
         logger.info(f"准备添加标题: title='{title}' (len={len(title) if title else 0}), subtitle='{subtitle}' (len={len(subtitle) if subtitle else 0})")
@@ -791,6 +1018,201 @@ class CoverGeneratorService:
         output.seek(0)
         
         logger.info(f"单图封面生成完成: {library_name}")
+        return output.getvalue()
+    
+    async def generate_style_single_2(
+        self, 
+        library_name: str,
+        image_path: str,
+        title: str = "",
+        subtitle: str = ""
+    ) -> bytes:
+        """
+        生成单图样式2封面 - 斜线分割设计
+        左侧：模糊背景 + 彩色混合 + 居中文字
+        右侧：右对齐裁剪的原图
+        
+        Args:
+            library_name: 媒体库名称
+            image_path: 源图片路径
+            title: 中文标题
+            subtitle: 英文副标题
+            
+        Returns:
+            PNG图片字节数据
+        """
+        logger.info(f"开始生成单图样式2封面: {library_name}")
+        
+        # 画布尺寸
+        canvas_size = (1920, 1080)
+        
+        # 斜线分割位置
+        split_top = 0.55    # 顶部分割点在55%
+        split_bottom = 0.4  # 底部分割点在40%
+        
+        # 加载并处理前景图片（右对齐）
+        fg_img_original = Image.open(image_path).convert("RGB")
+        fg_img = align_image_right(fg_img_original, canvas_size)
+        
+        # 提取马卡龙风格主色调
+        vibrant_colors = find_dominant_macaron_colors(fg_img, num_colors=6)
+        
+        # 柔和的颜色备选（马卡龙风格）
+        soft_colors = [
+            (237, 159, 77),    # 原默认色
+            (255, 183, 197),   # 淡粉色
+            (186, 225, 255),   # 淡蓝色
+            (255, 223, 186),   # 浅橘色
+            (202, 231, 200),   # 淡绿色
+            (245, 203, 255),   # 淡紫色
+        ]
+        
+        # 选择背景色
+        if vibrant_colors:
+            bg_color = vibrant_colors[0]
+        else:
+            bg_color = random.choice(soft_colors)
+        
+        shadow_color = darken_color(bg_color, 0.5)  # 阴影颜色加深到50%
+        
+        # 加载背景图片
+        bg_img_original = Image.open(image_path).convert("RGB")
+        bg_img = ImageOps.fit(bg_img_original, canvas_size, method=Image.LANCZOS)
+        
+        # 强烈模糊化背景图
+        blur_size = 50
+        bg_img = bg_img.filter(ImageFilter.GaussianBlur(radius=blur_size))
+        
+        # 将背景图片与背景色混合
+        bg_color_darkened = darken_color(bg_color, 0.85)
+        bg_img_array = np.array(bg_img, dtype=float)
+        bg_color_array = np.array([[bg_color_darkened]], dtype=float)
+        
+        # 混合背景图和颜色 (20% 背景图 + 80% 颜色)
+        color_ratio = 0.8
+        blended_bg = bg_img_array * (1 - color_ratio) + bg_color_array * color_ratio
+        blended_bg = np.clip(blended_bg, 0, 255).astype(np.uint8)
+        blended_bg_img = Image.fromarray(blended_bg)
+        
+        # 添加胶片颗粒效果
+        blended_bg_img = add_film_grain(blended_bg_img, intensity=0.05)
+        
+        # 创建斜线分割的蒙版
+        diagonal_mask = create_diagonal_mask(canvas_size, split_top, split_bottom)
+        
+        # 创建基础画布 - 前景图
+        canvas = fg_img.copy()
+        
+        # 创建阴影蒙版
+        shadow_mask = create_shadow_mask(canvas_size, split_top, split_bottom, feather_size=30)
+        
+        # 创建阴影层 - 使用加深的背景色
+        shadow_layer = Image.new('RGB', canvas_size, shadow_color)
+        
+        # 创建临时画布用于组合
+        temp_canvas = Image.new('RGB', canvas_size)
+        
+        # 应用阴影到前景图
+        temp_canvas.paste(canvas)
+        temp_canvas.paste(shadow_layer, mask=shadow_mask)
+        
+        # 使用蒙版将背景图应用到画布上
+        canvas = Image.composite(blended_bg_img, temp_canvas, diagonal_mask)
+        
+        # ===== 标题绘制 =====
+        canvas_rgba = canvas.convert('RGBA')
+        text_layer = Image.new('RGBA', canvas_size, (255, 255, 255, 0))
+        shadow_layer_text = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+        
+        shadow_draw = ImageDraw.Draw(shadow_layer_text)
+        draw = ImageDraw.Draw(text_layer)
+        
+        # 计算左侧区域的中心 X 位置 (画布宽度的四分之一处)
+        left_area_center_x = int(canvas_size[0] * 0.25)
+        left_area_center_y = canvas_size[1] // 2
+        
+        # 字体大小
+        zh_font_size = int(canvas_size[1] * 0.17)
+        en_font_size = int(canvas_size[1] * 0.07)
+        
+        # 加载字体
+        zh_font_path = self.font_dir / "SourceHanSerifSC-Heavy.otf"
+        en_font_path = self.font_dir / "Bebas-Regular.ttf"
+        
+        logger.info(f"single_2 字体路径: 中文={zh_font_path}, 英文={en_font_path}")
+        
+        if zh_font_path.exists():
+            zh_font = ImageFont.truetype(str(zh_font_path), zh_font_size)
+            logger.info(f"中文字体加载成功")
+        else:
+            logger.warning(f"中文字体不存在: {zh_font_path}，使用默认字体")
+            zh_font = ImageFont.load_default()
+        
+        if en_font_path.exists():
+            en_font = ImageFont.truetype(str(en_font_path), en_font_size)
+            logger.info(f"英文字体加载成功")
+        else:
+            logger.warning(f"英文字体不存在: {en_font_path}，使用默认字体")
+            en_font = ImageFont.load_default()
+        
+        # 设置文字颜色和阴影
+        text_color = (255, 255, 255, 229)  # 90%不透明度
+        shadow_color_text = darken_color(bg_color, 0.8) + (75,)  # 阴影颜色
+        shadow_offset = 12
+        shadow_alpha = 75
+        
+        # 计算中文标题的位置
+        if title:
+            zh_bbox = draw.textbbox((0, 0), title, font=zh_font)
+            zh_text_w = zh_bbox[2] - zh_bbox[0]
+            zh_text_h = zh_bbox[3] - zh_bbox[1]
+            zh_x = left_area_center_x - zh_text_w // 2
+            zh_y = left_area_center_y - zh_text_h - en_font_size // 2 - 5
+            
+            # 绘制中文标题阴影
+            for offset in range(3, shadow_offset + 1, 2):
+                current_shadow_color = shadow_color_text[:3] + (shadow_alpha,)
+                shadow_draw.text((zh_x + offset, zh_y + offset), title, font=zh_font, fill=current_shadow_color)
+            
+            # 绘制中文标题
+            draw.text((zh_x, zh_y), title, font=zh_font, fill=text_color)
+        
+        # 计算英文副标题的位置
+        if subtitle:
+            en_bbox = draw.textbbox((0, 0), subtitle, font=en_font)
+            en_text_w = en_bbox[2] - en_bbox[0]
+            en_text_h = en_bbox[3] - en_bbox[1]
+            en_x = left_area_center_x - en_text_w // 2
+            
+            if title:
+                # 如果有中文标题，则在其下方显示英文
+                en_y = zh_y + zh_text_h + en_font_size
+            else:
+                # 如果没有中文标题，则居中显示英文
+                en_y = left_area_center_y - en_text_h // 2
+            
+            # 绘制英文副标题阴影
+            for offset in range(2, shadow_offset // 2 + 1):
+                current_shadow_color = shadow_color_text[:3] + (shadow_alpha,)
+                shadow_draw.text((en_x + offset, en_y + offset), subtitle, font=en_font, fill=current_shadow_color)
+            
+            # 绘制英文副标题
+            draw.text((en_x, en_y), subtitle, font=en_font, fill=text_color)
+        
+        # 合成所有层
+        shadow_layer_text = shadow_layer_text.filter(ImageFilter.GaussianBlur(radius=12))
+        canvas_rgba = Image.alpha_composite(canvas_rgba, shadow_layer_text)
+        canvas_rgba = Image.alpha_composite(canvas_rgba, text_layer)
+        
+        # 转换回RGB
+        canvas = canvas_rgba.convert("RGB")
+        
+        # 转换为字节
+        output = io.BytesIO()
+        canvas.save(output, format="PNG", quality=95)
+        output.seek(0)
+        
+        logger.info(f"单图样式2封面生成完成: {library_name}")
         return output.getvalue()
     
     def create_extended_column(self, images: List[Image.Image], column_index: int) -> Image.Image:
@@ -1134,29 +1556,29 @@ class CoverGeneratorService:
         output = io.BytesIO()
         
         if output_format.lower() == 'gif':
-            # GIF格式 - 使用全局调色板避免文字闪烁（参考原项目）
-            gif_colors = 256  # 使用256色调色板
+            # GIF格式 - 使用全局调色板避免文字闪烁（参考jellyfin-library-poster）
+            gif_colors = 256  # 使用256色调色板，与原项目一致
             gif_frames = []
             
-            # 基于第一帧生成全局调色板，所有帧共享同一调色板
+            # 基于第一帧生成全局调色板，所有帧共享同一调色板以避免文字闪烁
             first_frame_rgb = frames[0].convert("RGB")
-            from PIL import Image as PILImage
             global_palette = first_frame_rgb.quantize(
                 colors=gif_colors, 
-                method=PILImage.Quantize.MEDIANCUT
+                method=Image.Quantize.MEDIANCUT
             )
             
-            logger.info("使用全局调色板处理GIF帧...")
+            logger.info(f"使用全局调色板处理GIF帧 (调色板大小: {gif_colors}色)...")
             for i, frame in enumerate(frames):
-                # 转换为RGB
+                # 先转换为RGB（移除alpha通道）
                 frame_rgb = frame.convert("RGB")
                 # 使用全局调色板进行量化，确保颜色一致性
                 frame_p = frame_rgb.quantize(
                     palette=global_palette, 
-                    dither=PILImage.Dither.FLOYDSTEINBERG
+                    dither=Image.Dither.FLOYDSTEINBERG
                 )
                 gif_frames.append(frame_p)
             
+            # 保存GIF，关闭优化以保持颜色一致性
             gif_frames[0].save(
                 output,
                 format='GIF',
@@ -1164,7 +1586,7 @@ class CoverGeneratorService:
                 append_images=gif_frames[1:],
                 duration=frame_duration,
                 loop=0,
-                optimize=False  # 关闭优化以保持颜色一致性
+                optimize=False
             )
         elif output_format.lower() == 'webp':
             frames[0].save(

@@ -248,3 +248,90 @@ def add_film_grain(image: Image.Image, intensity: float = 0.05) -> Image.Image:
     img_array = np.clip(img_array, 0, 255).astype(np.uint8)
     
     return Image.fromarray(img_array)
+
+
+def align_image_right(img: Image.Image, canvas_size: Tuple[int, int]) -> Image.Image:
+    """
+    将图片调整为与画布相同高度，裁剪出画布60%宽度的部分，
+    然后将裁剪后的图片靠右放置（用于 single_2 风格）
+    """
+    canvas_width, canvas_height = canvas_size
+    target_width = int(canvas_width * 0.675)
+    img_width, img_height = img.size
+
+    # 计算缩放比例以匹配画布高度
+    scale_factor = canvas_height / img_height
+    new_img_width = int(img_width * scale_factor)
+    resized_img = img.resize((new_img_width, canvas_height), Image.Resampling.LANCZOS)
+    
+    if new_img_width < target_width:
+        scale_factor = target_width / img_width
+        new_img_height = int(img_height * scale_factor)
+        resized_img = img.resize((target_width, new_img_height), Image.Resampling.LANCZOS)
+        
+        if new_img_height > canvas_height:
+            crop_top = (new_img_height - canvas_height) // 2
+            resized_img = resized_img.crop((0, crop_top, target_width, crop_top + canvas_height))
+        
+        final_img = Image.new("RGB", canvas_size)
+        final_img.paste(resized_img, (canvas_width - target_width, 0))
+        return final_img
+    
+    resized_img_center_x = new_img_width / 2
+    crop_left = max(0, resized_img_center_x - target_width / 2)
+    
+    if crop_left + target_width > new_img_width:
+        crop_left = new_img_width - target_width
+    crop_right = crop_left + target_width
+    
+    crop_left = max(0, crop_left)
+    crop_right = min(new_img_width, crop_right)
+    
+    cropped_img = resized_img.crop((int(crop_left), 0, int(crop_right), canvas_height))
+    
+    final_img = Image.new("RGB", canvas_size)
+    paste_x = canvas_width - cropped_img.width + int(canvas_width * 0.075)
+    final_img.paste(cropped_img, (paste_x, 0))
+    
+    return final_img
+
+
+def create_diagonal_mask(size: Tuple[int, int], split_top: float = 0.5, split_bottom: float = 0.33) -> Image.Image:
+    """创建斜线分割的蒙版。左侧为背景 (255)，右侧为前景 (0)"""
+    mask = Image.new('L', size, 255)
+    draw = ImageDraw.Draw(mask)
+    width, height = size
+    top_x = int(width * split_top)
+    bottom_x = int(width * split_bottom)
+
+    # 绘制前景区域 (右侧)
+    draw.polygon([(top_x, 0), (width, 0), (width, height), (bottom_x, height)], fill=0)
+    # 绘制背景区域 (左侧)
+    draw.polygon([(0, 0), (top_x, 0), (bottom_x, height), (0, height)], fill=255)
+    
+    return mask
+
+
+def create_shadow_mask(size: Tuple[int, int], split_top: float = 0.5, 
+                       split_bottom: float = 0.33, feather_size: int = 40) -> Image.Image:
+    """创建一个阴影蒙版，用于左侧图片向右侧图片投射阴影"""
+    width, height = size
+    top_x = int(width * split_top)
+    bottom_x = int(width * split_bottom)
+    
+    mask = Image.new('L', size, 0)
+    draw = ImageDraw.Draw(mask)
+    
+    shadow_width = feather_size // 3
+    
+    draw.polygon([
+        (top_x - 5, 0),
+        (top_x - 5 + shadow_width, 0),
+        (bottom_x - 5 + shadow_width, height),
+        (bottom_x - 5, height)
+    ], fill=255)
+    
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=feather_size//3))
+    
+    return mask
+
