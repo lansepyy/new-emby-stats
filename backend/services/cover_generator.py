@@ -302,8 +302,66 @@ class CoverGeneratorService:
         
         # 返回默认字体路径（即使不存在，PIL会使用默认字体）
         return self.font_dir / "default.ttf"
-    
-    async def _fetch_posters(self, library_id: str, count: int = 9) -> List[Image.Image]:
+        def _add_title_overlay(
+        self,
+        canvas: Image.Image,
+        title: str,
+        subtitle: str = "",
+        color: tuple = (100, 150, 200, 255)
+    ) -> Image.Image:
+        """在画布左侧添加标题叠加层
+        
+        Args:
+            canvas: 原始画布图像
+            title: 主标题(中文)
+            subtitle: 副标题(英文)  
+            color: 色块颜色 RGBA
+            
+        Returns:
+            添加了标题的画布
+        """
+        draw = ImageDraw.Draw(canvas)
+        
+        # 加载字体
+        try:
+            # 中文标题字体 163px
+            title_font = ImageFont.truetype(str(self._get_font_path()), 163)
+            # 英文副标题字体 50px
+            subtitle_font = ImageFont.truetype(str(self._get_font_path()), 50)
+        except Exception as e:
+            logger.warning(f"加载字体失败: {e}, 使用默认字体")
+            title_font = ImageFont.load_default()
+            subtitle_font = ImageFont.load_default()
+        
+        # 色块位置和大小 (84, 620, 22x65)
+        block_x, block_y = 84, 620
+        block_width, block_height = 22, 65
+        draw.rectangle(
+            [(block_x, block_y), (block_x + block_width, block_y + block_height)],
+            fill=color
+        )
+        
+        # 中文标题位置 (73, 427)
+        title_x, title_y = 73, 427
+        draw.text(
+            (title_x, title_y),
+            title,
+            font=title_font,
+            fill=(255, 255, 255, 255)
+        )
+        
+        # 英文副标题位置 (125, 625)
+        if subtitle:
+            subtitle_x, subtitle_y = 125, 625
+            draw.text(
+                (subtitle_x, subtitle_y),
+                subtitle,
+                font=subtitle_font,
+                fill=(255, 255, 255, 255)
+            )
+        
+        return canvas
+        async def _fetch_posters(self, library_id: str, count: int = 9) -> List[Image.Image]:
         """获取海报图片列表"""
         items = await self.get_library_items(library_id, limit=count * 2)
         if not items:
