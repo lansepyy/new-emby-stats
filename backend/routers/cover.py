@@ -43,6 +43,59 @@ class GenerateCoverRequest(BaseModel):
     output_format: str = "gif"  # gif, webp
 
 
+@router.get("/test-image/{library_id}")
+async def test_library_image(library_id: str):
+    """测试媒体库封面的实际格式"""
+    try:
+        from services.emby import emby_service
+        import httpx
+        
+        api_key = await emby_service.get_api_key()
+        if not api_key:
+            raise HTTPException(status_code=500, detail="无法获取API密钥")
+        
+        url = f"{emby_service.settings.EMBY_URL}/emby/Items/{library_id}/Images/Primary"
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                url,
+                params={"api_key": api_key}
+            )
+            
+            if response.status_code == 200:
+                content_type = response.headers.get("content-type", "unknown")
+                content_length = len(response.content)
+                
+                # 检查文件签名
+                file_signature = response.content[:16].hex() if len(response.content) >= 16 else ""
+                
+                is_gif = file_signature.startswith("474946383961") or file_signature.startswith("474946383761")  # GIF89a or GIF87a
+                is_webp = file_signature.startswith("52494646") and response.content[8:12].hex() == "57454250"  # RIFF...WEBP
+                is_png = file_signature.startswith("89504e47")  # PNG
+                is_jpeg = file_signature.startswith("ffd8ff")  # JPEG
+                
+                return {
+                    "success": True,
+                    "library_id": library_id,
+                    "content_type": content_type,
+                    "content_length": content_length,
+                    "file_signature": file_signature,
+                    "detected_format": {
+                        "is_gif": is_gif,
+                        "is_webp": is_webp,
+                        "is_png": is_png,
+                        "is_jpeg": is_jpeg
+                    },
+                    "url": url
+                }
+            else:
+                raise HTTPException(status_code=response.status_code, detail=f"获取图片失败: {response.status_code}")
+                
+    except Exception as e:
+        logger.error(f"测试图片失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/libraries")
 async def get_libraries():
     """获取媒体库列表"""

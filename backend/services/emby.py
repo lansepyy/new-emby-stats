@@ -214,8 +214,15 @@ class EmbyService:
                     }
                 )
                 
+                print(f"上传响应: status={response.status_code}, headers={dict(response.headers)}")
+                
                 if response.status_code in [200, 204]:
                     print(f"成功上传封面到媒体库 {library_id}")
+                    if content_type in ["image/gif", "image/webp"]:
+                        print("⚠️ 动图上传成功！如果Emby中不动，请尝试：")
+                        print("   1. 清除浏览器缓存 (Ctrl+Shift+Delete)")
+                        print("   2. 在Emby中右键媒体库 -> 刷新元数据")
+                        print("   3. 检查Emby客户端是否支持GIF/WebP动画")
                     return True
                 else:
                     print(f"上传封面失败: {response.status_code}, {response.text}")
