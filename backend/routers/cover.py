@@ -60,6 +60,12 @@ async def generate_cover(request: GenerateCoverRequest):
         logger.info(f"完整请求数据: {request.dict()}")
         logger.info(f"标题信息: title='{request.title}', subtitle='{request.subtitle}'")
         logger.info(f"动画参数: frame_count={request.frame_count}, frame_duration={request.frame_duration}, output_format={request.output_format}")
+        
+        # 检查是否支持动画
+        if request.is_animated and request.style != "multi_1":
+            logger.warning(f"⚠️ {request.style} 风格不支持动画，将生成静态图")
+            request.is_animated = False
+        
         logger.info(f"🔍 判断条件: style={request.style}, is_animated={request.is_animated}, 进入分支: {'动画' if request.is_animated else '静态'}")
         
         # 根据风格和动画选项决定生成类型

@@ -901,16 +901,25 @@ export default function Covers() {
                       type="checkbox"
                       checked={config.is_animated}
                       onChange={(e: ChangeEvent<HTMLInputElement>) => setConfig({ ...config, is_animated: e.target.checked })}
-                      className="w-7 h-7 text-green-600 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 cursor-pointer"
+                      disabled={config.style !== 'multi_1'}
+                      className="w-7 h-7 text-green-600 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
                   <div className="flex-1">
                     <span className="text-base font-bold text-gray-800 block">启用动画封面生成</span>
-                    <span className="text-sm text-gray-600">创建动态变化的媒体库封面</span>
+                    <span className="text-sm text-gray-600">创建动态变化的媒体库封面（仅支持多图 1 风格）</span>
                   </div>
                 </label>
 
-                {config.is_animated && (
+                {config.style !== 'multi_1' && (
+                  <div className="bg-orange-100 border-l-4 border-orange-500 p-4 rounded mb-4">
+                    <p className="text-sm text-orange-900">
+                      <strong>⚠️ 注意：</strong>目前仅「多图 1」风格支持动画封面。请切换到多图风格后再启用动画。
+                    </p>
+                  </div>
+                )}
+
+                {config.is_animated && config.style === 'multi_1' && (
                   <div className="space-y-6 pt-6 border-t border-green-200">
                     <div>
                       <label className="flex items-center justify-between mb-3">
