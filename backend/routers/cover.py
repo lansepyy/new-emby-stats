@@ -57,8 +57,10 @@ async def generate_cover(request: GenerateCoverRequest):
     """生成封面"""
     try:
         logger.info(f"收到封面生成请求: {request.library_name}, 风格: {request.style}, 动画: {request.is_animated}")
+        logger.info(f"完整请求数据: {request.dict()}")
         logger.info(f"标题信息: title='{request.title}', subtitle='{request.subtitle}'")
         logger.info(f"动画参数: frame_count={request.frame_count}, frame_duration={request.frame_duration}, output_format={request.output_format}")
+        logger.info(f"🔍 判断条件: style={request.style}, is_animated={request.is_animated}, 进入分支: {'动画' if request.is_animated else '静态'}")
         
         # 根据风格和动画选项决定生成类型
         if request.style == "multi_1":
