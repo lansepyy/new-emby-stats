@@ -216,7 +216,8 @@ async def upload_cover_to_emby(
                 subtitle=request.subtitle,
                 poster_count=request.poster_count,
                 use_blur=request.use_blur,
-                use_macaron=request.use_macaron
+                blur_size=request.blur_size,
+                color_ratio=request.color_ratio
             )
         else:
             # 单图马卡龙风格
