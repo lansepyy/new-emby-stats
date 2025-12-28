@@ -259,12 +259,53 @@ export default function Covers() {
     setUploading(true)
     setError(null)
     try {
+      const selectedLib = libraries.find((lib: Library) => lib.id === selectedLibrary)
+      
+      // 解析YAML配置获取中英文标题（与预览接口保持一致）
+      let title = selectedLib?.name || ''
+      let subtitle = ''
+      
+      if (config.title_text && selectedLib?.name) {
+        try {
+          const lines = config.title_text.split('\n')
+          let currentLibrary = ''
+          let foundLibrary = false
+          let titleCount = 0
+          
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim()
+            
+            if (line.startsWith('#') || !line) continue
+            
+            if (line.endsWith(':')) {
+              currentLibrary = line.slice(0, -1).trim()
+              foundLibrary = currentLibrary === selectedLib.name
+              titleCount = 0
+            }
+            else if (foundLibrary && line.startsWith('-')) {
+              const value = line.slice(1).trim()
+              if (titleCount === 0) {
+                title = value
+                titleCount++
+              } else if (titleCount === 1) {
+                subtitle = value
+                break
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('YAML配置解析失败，使用默认标题:', e)
+        }
+      }
+      
       const uploadResponse = await fetch(`/api/cover/upload/${selectedLibrary}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           library_id: selectedLibrary,
-          library_name: libraries.find((lib: Library) => lib.id === selectedLibrary)?.name || '',
+          library_name: selectedLib?.name || '',
+          title: title,
+          subtitle: subtitle,
           ...config
         })
       })

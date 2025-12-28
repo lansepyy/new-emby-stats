@@ -625,6 +625,7 @@ class CoverGeneratorService:
             color_ratio: 颜色混合比例
         """
         logger.info(f"开始生成多图封面: {library_name}")
+        logger.info(f"标题参数: title='{title}', subtitle='{subtitle}'")
         
         # 获取海报
         items = await self.get_library_items(library_id, limit=poster_count * 2)
@@ -1013,6 +1014,7 @@ class CoverGeneratorService:
         参考 MoviePilot-Plugins 的实现
         """
         logger.info(f"开始生成单图封面: {library_name}")
+        logger.info(f"标题参数: title='{title}', subtitle='{subtitle}'")
         
         # 获取一个随机项目作为主图
         items = await self.get_library_items(library_id, limit=1, sort_by="Random")
@@ -1227,6 +1229,7 @@ class CoverGeneratorService:
             PNG图片字节数据
         """
         logger.info(f"开始生成单图样式2封面: {library_name}")
+        logger.info(f"标题参数: title='{title}', subtitle='{subtitle}'")
         
         # 获取一个随机项目作为主图
         items = await self.get_library_items(library_id, limit=1, sort_by="Random")
