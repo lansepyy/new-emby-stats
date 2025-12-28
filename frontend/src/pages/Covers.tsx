@@ -398,11 +398,75 @@ export default function Covers() {
                       
                       {/* 右侧：参考示例（固定显示）*/}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          📋 配置示例（可复制）
-                        </label>
-                        <div className="w-full px-4 py-3 bg-gray-50 text-gray-700 font-mono text-sm border border-gray-300 rounded-lg overflow-auto" style={{height: '480px'}}>
-                          <pre className="whitespace-pre text-xs leading-relaxed">{`# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-sm font-medium text-gray-700">
+                            📋 配置示例（可复制）
+                          </label>
+                          <button
+                            onClick={() => {
+                              const exampleText = `# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 格式说明：
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 媒体库名称:
+#   - 中文标题
+#   - 英文标题
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 配置示例（直接复制到左侧修改）：
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+华语电影:
+  - 华语电影
+  - Chinese Movies
+
+欧美电影:
+  - 欧美电影
+  - Western Movies
+
+电视剧:
+  - 电视剧
+  - TV Series
+
+动漫:
+  - 动漫
+  - Anime
+
+纪录片:
+  - 纪录片
+  - Documentary
+
+综艺:
+  - 综艺
+  - Variety Shows
+
+儿童:
+  - 儿童
+  - Kids
+
+音乐:
+  - 音乐
+  - Music
+
+体育:
+  - 体育
+  - Sports
+
+短剧:
+  - 短剧
+  - Short Drama`;
+                              navigator.clipboard.writeText(exampleText);
+                              alert('✅ 已复制示例到剪贴板！');
+                            }}
+                            className="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors flex items-center gap-1"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            复制示例
+                          </button>
+                        </div>
+                        <div className="w-full px-4 py-3 bg-gray-50 text-gray-700 font-mono text-sm border border-gray-300 rounded-lg overflow-auto select-text" style={{height: '480px'}}>
+                          <pre className="whitespace-pre text-xs leading-relaxed select-text">{`# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 格式说明：
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 媒体库名称:
