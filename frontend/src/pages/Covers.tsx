@@ -62,52 +62,8 @@ export default function Covers() {
     return {
       style: 'multi_1',
       use_title: true,
-      title_text: `# 序号格式说明：
-# 1. 媒体库名称:
-# 2.   - 中文标题
-# 3.   - 英文标题
-#
-# 配置示例（可复制修改）：
-# 1. 华语电影:
-# 2.   - 华语电影
-#3.   - Chinese Movies
-#
-# 4. 欧美电影:
-# 5.   - 欧美电影
-# 6.   - Western Movies
-#
-# 7. 电视剧:
-# 8.   - 电视剧
-# 9.   - TV Series
-#
-# 10. 动漫:
-# 11.   - 动漫
-# 12.   - Anime
-#
-# 13. 纪录片:
-# 14.   - 纪录片
-# 15.   - Documentary
-#
-# 16. 综艺:
-# 17.   - 综艺
-# 18.   - Variety Shows
-#
-# 19. 儿童:
-# 20.   - 儿童
-# 21.   - Kids
-#
-# 22. 音乐:
-# 23.   - 音乐
-# 24.   - Music
-#
-# 25. 体育:
-# 26.   - 体育
-# 27.   - Sports
-#
-# 28. 短剧:
-# 29.   - 短剧
-# 30.   - Short Drama
-`,
+      title_text: ``,
+
       use_blur: true,
       use_macaron: true,
       use_film_grain: true,
@@ -424,18 +380,80 @@ export default function Covers() {
                       </p>
                     </div>
                     
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        标题配置 (YAML 格式)
-                      </label>
-                      <textarea
-                        value={config.title_text}
-                        onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setConfig({ ...config, title_text: e.target.value })}
-                        className="w-full px-4 py-3 bg-gray-900 text-green-400 font-mono text-sm border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        rows={15}
-                        placeholder={`# 配置封面标题（按媒体库名称对应）\n# 格式如下：\n#\n# 媒体库名称:\n#   - 中文标题\n#   - 英文标题\n#\n# 示例：\n恐师片:\n  - 恐师片\n  - Horror\n\n天堂电影:\n  - 天堂电影\n  - TV`}
-                        spellCheck={false}
-                      />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {/* 左侧：配置输入区 */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          📝 您的配置 (YAML格式)
+                        </label>
+                        <textarea
+                          value={config.title_text}
+                          onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setConfig({ ...config, title_text: e.target.value })}
+                          className="w-full px-4 py-3 bg-gray-900 text-green-400 font-mono text-sm border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          rows={20}
+                          placeholder="请参考右侧示例配置..."
+                          spellCheck={false}
+                        />
+                      </div>
+                      
+                      {/* 右侧：参考示例（固定显示）*/}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          📋 配置示例（可复制）
+                        </label>
+                        <div className="w-full px-4 py-3 bg-gray-50 text-gray-700 font-mono text-sm border border-gray-300 rounded-lg overflow-auto" style={{height: '480px'}}>
+                          <pre className="whitespace-pre text-xs leading-relaxed">{`# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 格式说明：
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 媒体库名称:
+#   - 中文标题
+#   - 英文标题
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 配置示例（直接复制到左侧修改）：
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+华语电影:
+  - 华语电影
+  - Chinese Movies
+
+欧美电影:
+  - 欧美电影
+  - Western Movies
+
+电视剧:
+  - 电视剧
+  - TV Series
+
+动漫:
+  - 动漫
+  - Anime
+
+纪录片:
+  - 纪录片
+  - Documentary
+
+综艺:
+  - 综艺
+  - Variety Shows
+
+儿童:
+  - 儿童
+  - Kids
+
+音乐:
+  - 音乐
+  - Music
+
+体育:
+  - 体育
+  - Sports
+
+短剧:
+  - 短剧
+  - Short Drama`}</pre>
+                        </div>
+                      </div>
                     </div>
                     
                     <div>

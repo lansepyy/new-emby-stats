@@ -195,13 +195,24 @@ class EmbyService:
                 return False
             
             async with httpx.AsyncClient(timeout=60.0) as client:
+                # 检测图片格式
+                content_type = "image/png"
+                if image_data[:4] == b'\x89PNG':
+                    content_type = "image/png"
+                elif image_data[:2] == b'\xff\xd8':
+                    content_type = "image/jpeg"
+                elif image_data[:6] in (b'GIF87a', b'GIF89a'):
+                    content_type = "image/gif"
+                elif image_data[:4] == b'RIFF' and image_data[8:12] == b'WEBP':
+                    content_type = "image/webp"
+                
                 # Emby API: POST /Items/{Id}/Images/{Type}
                 response = await client.post(
                     f"{settings.EMBY_URL}/emby/Items/{library_id}/Images/{image_type}",
                     params={"api_key": api_key},
                     content=image_data,
                     headers={
-                        "Content-Type": "image/png"
+                        "Content-Type": content_type
                     }
                 )
                 
