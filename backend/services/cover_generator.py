@@ -198,6 +198,10 @@ class CoverGeneratorService:
         self.cache_dir = Path("/tmp/cover_cache")
         self.cache_dir.mkdir(exist_ok=True, parents=True)
         
+        # 加载封面配置
+        from config_storage import config_storage
+        self.config = config_storage.get_cover_config()
+        
         # 字体路径 - 在Docker容器中使用绝对路径
         self.font_dir = Path("/app/res/fonts")
         if not self.font_dir.exists():

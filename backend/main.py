@@ -21,6 +21,10 @@ app = FastAPI(title="New Emby Stats")
 @app.on_event("startup")
 async def startup_event():
     """应用启动时执行"""
+    # 确保关键目录存在
+    os.makedirs("/config/fonts", exist_ok=True)
+    print("✓ 已检查并创建字体目录: /config/fonts")
+    
     report_scheduler.start()
 
 @app.on_event("shutdown")
