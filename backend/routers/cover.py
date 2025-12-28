@@ -196,6 +196,8 @@ async def upload_cover_to_emby(
             image_data = await cover_service.generate_animated_cover(
                 library_id=request.library_id,
                 library_name=request.library_name,
+                title=request.title,
+                subtitle=request.subtitle,
                 style=request.style,
                 frame_count=request.frame_count,
                 frame_duration=request.frame_duration,
