@@ -182,37 +182,32 @@ class EmbyService:
         
         Args:
             library_id: 媒体库ID
-            image_data: 图片数据
+            image_data: 图片数据（bytes）
             image_type: 图片类型 (Primary/Backdrop/Logo等)
             
         Returns:
             上传是否成功
         """
         try:
+            import base64
+            
             api_key = await self.get_api_key()
             if not api_key:
                 print("未找到API密钥")
                 return False
             
+            # 将图片数据转换为Base64字符串（参考MoviePilot）
+            image_base64 = base64.b64encode(image_data).decode('utf-8')
+            
             async with httpx.AsyncClient(timeout=60.0) as client:
-                # 检测图片格式
-                content_type = "image/png"
-                if image_data[:4] == b'\x89PNG':
-                    content_type = "image/png"
-                elif image_data[:2] == b'\xff\xd8':
-                    content_type = "image/jpeg"
-                elif image_data[:6] in (b'GIF87a', b'GIF89a'):
-                    content_type = "image/gif"
-                elif image_data[:4] == b'RIFF' and image_data[8:12] == b'WEBP':
-                    content_type = "image/webp"
-                
                 # Emby API: POST /Items/{Id}/Images/{Type}
+                # 注意：data参数发送Base64字符串，Content-Type固定为image/png
                 response = await client.post(
                     f"{settings.EMBY_URL}/emby/Items/{library_id}/Images/{image_type}",
                     params={"api_key": api_key},
-                    content=image_data,
+                    data=image_base64,
                     headers={
-                        "Content-Type": content_type
+                        "Content-Type": "image/png"
                     }
                 )
                 
