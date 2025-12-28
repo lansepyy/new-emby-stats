@@ -176,7 +176,7 @@ class EmbyService:
 
         return None
 
-    async def upload_library_image(self, library_id: str, image_data: bytes, image_type: str = "Primary") -> bool:
+    async def upload_library_image(self, library_id: str, image_data: bytes, image_type: str = "Primary", content_type: str = "image/png") -> bool:
         """
         上传图片到媒体库
         
@@ -184,6 +184,7 @@ class EmbyService:
             library_id: 媒体库ID
             image_data: 图片数据（bytes）
             image_type: 图片类型 (Primary/Backdrop/Logo等)
+            content_type: 图片MIME类型 (image/png, image/gif, image/webp等)
             
         Returns:
             上传是否成功
@@ -199,15 +200,17 @@ class EmbyService:
             # 将图片数据转换为Base64字符串（参考MoviePilot）
             image_base64 = base64.b64encode(image_data).decode('utf-8')
             
+            print(f"准备上传封面: content_type={content_type}, size={len(image_data)} bytes")
+            
             async with httpx.AsyncClient(timeout=60.0) as client:
                 # Emby API: POST /Items/{Id}/Images/{Type}
-                # 注意：data参数发送Base64字符串，Content-Type固定为image/png
+                # 使用正确的Content-Type确保动图能正常显示
                 response = await client.post(
                     f"{settings.EMBY_URL}/emby/Items/{library_id}/Images/{image_type}",
                     params={"api_key": api_key},
                     data=image_base64,
                     headers={
-                        "Content-Type": "image/png"
+                        "Content-Type": content_type
                     }
                 )
                 

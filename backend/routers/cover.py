@@ -259,13 +259,27 @@ async def upload_cover_to_emby(
         
         logger.info(f"封面生成成功，大小: {len(image_data)} 字节")
         
+        # 根据生成类型确定Content-Type
+        if request.is_animated:
+            if request.output_format == "gif":
+                content_type = "image/gif"
+            elif request.output_format == "webp":
+                content_type = "image/webp"
+            else:
+                content_type = "image/gif"  # 默认GIF
+            logger.info(f"上传动画封面，格式: {content_type}")
+        else:
+            content_type = "image/png"
+            logger.info(f"上传静态封面，格式: {content_type}")
+        
         # 上传到 Emby
         from services.emby import emby_service
         
         success = await emby_service.upload_library_image(
             library_id=library_id,
             image_data=image_data,
-            image_type="Primary"
+            image_type="Primary",
+            content_type=content_type
         )
         
         if success:
