@@ -57,49 +57,56 @@ async def generate_cover(request: GenerateCoverRequest):
     """生成封面"""
     try:
         logger.info(f"收到封面生成请求: {request.library_name}, 风格: {request.style}, 动画: {request.is_animated}")
+        logger.info(f"标题信息: title='{request.title}', subtitle='{request.subtitle}'")
+        logger.info(f"动画参数: frame_count={request.frame_count}, frame_duration={request.frame_duration}, output_format={request.output_format}")
         
-        # 只有multi_1风格且启用动画才生成动画封面
-        if request.is_animated and request.style == "multi_1":
-            image_data = await cover_service.generate_animated_cover(
-                library_id=request.library_id,
-                library_name=request.library_name,
-                title=request.title,
-                subtitle=request.subtitle,
-                style=request.style,
-                frame_count=request.frame_count,
-                frame_duration=request.frame_duration,
-                output_format=request.output_format,
-                use_title=request.use_title,
-                use_macaron=request.use_macaron,
-                use_film_grain=request.use_film_grain,
-                poster_count=request.poster_count
-            )
-            
-            # 根据输出格式设置 content_type
-            content_type = f"image/{request.output_format}"
-            return Response(
-                content=image_data,
-                media_type=content_type,
-                headers={
-                    "Content-Disposition": f'inline; filename="cover.{request.output_format}"'
-                }
-            )
-        
-        # 静态封面生成
+        # 根据风格和动画选项决定生成类型
         if request.style == "multi_1":
             # 多图拼贴风格
-            image_data = await cover_service.generate_style_multi(
-                library_id=request.library_id,
-                library_name=request.library_name,
-                title=request.title,
-                subtitle=request.subtitle,
-                poster_count=request.poster_count,
-                use_blur=request.use_blur,
-                blur_size=request.blur_size,
-                color_ratio=request.color_ratio
-            )
+            if request.is_animated:
+                # 生成动画版本
+                logger.info("开始生成多图动画封面...")
+                image_data = await cover_service.generate_animated_cover(
+                    library_id=request.library_id,
+                    library_name=request.library_name,
+                    title=request.title,
+                    subtitle=request.subtitle,
+                    style=request.style,
+                    frame_count=request.frame_count,
+                    frame_duration=request.frame_duration,
+                    output_format=request.output_format,
+                    use_title=request.use_title,
+                    use_macaron=request.use_macaron,
+                    use_film_grain=request.use_film_grain,
+                    poster_count=request.poster_count
+                )
+                
+                # 根据输出格式设置 content_type
+                content_type = f"image/{request.output_format}"
+                logger.info(f"✅ 动画封面生成成功，类型: {content_type}, 大小: {len(image_data)} bytes")
+                return Response(
+                    content=image_data,
+                    media_type=content_type,
+                    headers={
+                        "Content-Disposition": f'inline; filename="cover.{request.output_format}"'
+                    }
+                )
+            else:
+                # 生成静态版本
+                logger.info("开始生成多图静态封面...")
+                image_data = await cover_service.generate_style_multi(
+                    library_id=request.library_id,
+                    library_name=request.library_name,
+                    title=request.title,
+                    subtitle=request.subtitle,
+                    poster_count=request.poster_count,
+                    use_blur=request.use_blur,
+                    blur_size=request.blur_size,
+                    color_ratio=request.color_ratio
+                )
         elif request.style == "single_1":
-            # 单图风格1 - 卡片旋转
+            # 单图风格1 - 卡片旋转（只支持静态）
+            logger.info("开始生成单图风格1封面...")
             image_data = await cover_service.generate_style_single(
                 library_id=request.library_id,
                 library_name=request.library_name,
@@ -110,7 +117,8 @@ async def generate_cover(request: GenerateCoverRequest):
                 color_ratio=request.color_ratio
             )
         elif request.style == "single_2":
-            # 单图风格2 - 斜线分割
+            # 单图风格2 - 斜线分割（只支持静态）
+            logger.info("开始生成单图风格2封面...")
             image_data = await cover_service.generate_style_single_2(
                 library_id=request.library_id,
                 library_name=request.library_name,

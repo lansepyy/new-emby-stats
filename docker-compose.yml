@@ -7,8 +7,9 @@ services:
     volumes:
       # 挂载包含 playback_reporting.db 的 data 目录（只读）
       - /path/to/emby/data:/data:ro
-      # 配置目录（保存服务器配置、TG推送配置等，必须挂载否则更新容器后配置丢失）
+      # 配置目录（保存服务器配置、TG推送配置、Webhook配置等，必须挂载否则更新容器后配置丢失）
       - /path/to/new-emby-stats/config:/config
+      # 如需自定义字体，将字体文件放入上述config目录下的fonts子目录：/path/to/new-emby-stats/config/fonts/
     environment:
       # Emby 服务器地址（必填）
       - EMBY_URL=http://your-emby-server:8096

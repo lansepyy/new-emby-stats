@@ -20,6 +20,10 @@ interface CoverConfig {
   font_size_ratio: number
   date_font_size_ratio: number
   font_family: string
+  zh_font_path: string
+  en_font_path: string
+  zh_font_size: number
+  en_font_size: number
   is_animated: boolean
   frame_count: number
   frame_duration: number
@@ -113,6 +117,10 @@ export default function Covers() {
       font_size_ratio: 0.12,
       date_font_size_ratio: 0.05,
       font_family: 'SourceHanSansCN-Bold.otf',
+      zh_font_path: '',
+      en_font_path: '',
+      zh_font_size: 163,
+      en_font_size: 50,
       is_animated: false,
       frame_count: 60,
       frame_duration: 50,
@@ -202,6 +210,7 @@ export default function Covers() {
           const lines = config.title_text.split('\n')
           let currentLibrary = ''
           let foundLibrary = false
+          let titleCount = 0  // 记录已找到的标题数量
           
           for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim()
@@ -213,13 +222,15 @@ export default function Covers() {
             if (line.endsWith(':')) {
               currentLibrary = line.slice(0, -1).trim()
               foundLibrary = currentLibrary === selectedLib.name
+              titleCount = 0  // 重置计数器
             }
             // 如果找到了对应的媒体库，读取其标题
             else if (foundLibrary && line.startsWith('-')) {
               const value = line.slice(1).trim()
-              if (!title || title === selectedLib.name) {
+              if (titleCount === 0) {
                 title = value  // 第一个 - 是中文标题
-              } else if (!subtitle) {
+                titleCount++
+              } else if (titleCount === 1) {
                 subtitle = value  // 第二个 - 是英文标题
                 break  // 找到两个标题后退出
               }
@@ -239,6 +250,12 @@ export default function Covers() {
       }
       
       console.log('🎬 发送封面生成请求:', requestData)
+      console.log('📊 配置详情:', {
+        style: config.style,
+        is_animated: config.is_animated,
+        frame_count: config.frame_count,
+        output_format: config.output_format
+      })
       
       const response = await fetch('/api/cover/generate', {
         method: 'POST',
@@ -435,8 +452,86 @@ export default function Covers() {
                     
                     {config.use_title && (
                       <div className="space-y-4 pl-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* 中文字体配置 */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">中文字体路径</label>
+                            <input
+                              type="text"
+                              value={config.zh_font_path}
+                              onChange={(e: ChangeEvent<HTMLInputElement>) => setConfig({ ...config, zh_font_path: e.target.value })}
+                              placeholder="/config/fonts/你的中文字体.ttf"
+                              className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">留空使用默认字体</p>
+                          </div>
+                          
+                          {/* 英文字体配置 */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">英文字体路径</label>
+                            <input
+                              type="text"
+                              value={config.en_font_path}
+                              onChange={(e: ChangeEvent<HTMLInputElement>) => setConfig({ ...config, en_font_path: e.target.value })}
+                              placeholder="/config/fonts/你的英文字体.otf"
+                              className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">留空使用默认字体</p>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* 中文字体大小 */}
+                          <div>
+                            <label className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">中文字体大小</span>
+                              <span className="text-sm font-bold text-blue-600">{config.zh_font_size}px</span>
+                            </label>
+                            <input
+                              type="range"
+                              min="100"
+                              max="300"
+                              step="1"
+                              value={config.zh_font_size}
+                              onChange={(e: ChangeEvent<HTMLInputElement>) => setConfig({ ...config, zh_font_size: parseInt(e.target.value) })}
+                              className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                              style={{
+                                background: `linear-gradient(to right, rgb(59, 130, 246) 0%, rgb(59, 130, 246) ${((config.zh_font_size - 100) / 200) * 100}%, #e5e7eb ${((config.zh_font_size - 100) / 200) * 100}%, #e5e7eb 100%)`
+                              }}
+                            />
+                            <div className="flex justify-between text-xs text-gray-500 mt-1">
+                              <span>100px</span>
+                              <span>300px</span>
+                            </div>
+                          </div>
+                          
+                          {/* 英文字体大小 */}
+                          <div>
+                            <label className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">英文字体大小</span>
+                              <span className="text-sm font-bold text-blue-600">{config.en_font_size}px</span>
+                            </label>
+                            <input
+                              type="range"
+                              min="30"
+                              max="100"
+                              step="1"
+                              value={config.en_font_size}
+                              onChange={(e: ChangeEvent<HTMLInputElement>) => setConfig({ ...config, en_font_size: parseInt(e.target.value) })}
+                              className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                              style={{
+                                background: `linear-gradient(to right, rgb(59, 130, 246) 0%, rgb(59, 130, 246) ${((config.en_font_size - 30) / 70) * 100}%, #e5e7eb ${((config.en_font_size - 30) / 70) * 100}%, #e5e7eb 100%)`
+                              }}
+                            />
+                            <div className="flex justify-between text-xs text-gray-500 mt-1">
+                              <span>30px</span>
+                              <span>100px</span>
+                            </div>
+                          </div>
+                        </div>
+                        
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">字体选择</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">字体选择（旧版，建议使用上面的字体路径）</label>
                           <select
                             value={config.font_family}
                             onChange={(e: ChangeEvent<HTMLSelectElement>) => setConfig({ ...config, font_family: e.target.value })}

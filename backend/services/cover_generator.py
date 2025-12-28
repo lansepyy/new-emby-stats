@@ -335,23 +335,34 @@ class CoverGeneratorService:
         """
         draw = ImageDraw.Draw(canvas)
         
-        # 加载字体（使用MoviePilot-Plugins的字体）
-        zh_font_path = self.font_dir / "multi_1_zh.ttf"
-        en_font_path = self.font_dir / "multi_1_en.otf"
+        # 加载字体（优先使用配置的字体，否则使用默认）
+        zh_font_path_config = self.config.get("zh_font_path", "")
+        if zh_font_path_config:
+            zh_font_path = Path(zh_font_path_config)
+        else:
+            zh_font_path = self.font_dir / "multi_1_zh.ttf"
+            
+        en_font_path_config = self.config.get("en_font_path", "")
+        if en_font_path_config:
+            en_font_path = Path(en_font_path_config)
+        else:
+            en_font_path = self.font_dir / "multi_1_en.otf"
         
         logger.info(f"动图标题字体路径: 中文={zh_font_path}, 英文={en_font_path}")
         
-        # 中文标题字体 163px
+        # 中文标题字体（使用配置的字体大小，默认163px）
+        zh_font_size = self.config.get("zh_font_size", 163)
         if zh_font_path.exists():
-            title_font = ImageFont.truetype(str(zh_font_path), 163)
+            title_font = ImageFont.truetype(str(zh_font_path), zh_font_size)
             logger.info(f"动图中文字体加载成功")
         else:
             logger.warning(f"中文字体不存在: {zh_font_path}, 使用默认字体")
             title_font = ImageFont.load_default()
         
-        # 英文副标题字体 50px
+        # 英文副标题字体（使用配置的字体大小，默认50px）
+        en_font_size = self.config.get("en_font_size", 50)
         if en_font_path.exists():
-            subtitle_font = ImageFont.truetype(str(en_font_path), 50)
+            subtitle_font = ImageFont.truetype(str(en_font_path), en_font_size)
             logger.info(f"动图英文字体加载成功")
         else:
             logger.warning(f"英文字体不存在: {en_font_path}, 使用默认字体")
@@ -805,8 +816,15 @@ class CoverGeneratorService:
         
         # 按照MoviePilot的方式绘制文字和色块
         if title:  # 中文标题
-            zh_font_path = self.font_dir / "multi_1_zh.ttf"
-            zh_font_size = 163  # 固定字体大小，与MoviePilot一致
+            # 优先使用用户配置的字体路径，否则使用默认
+            zh_font_path_config = self.config.get("zh_font_path", "")
+            if zh_font_path_config:
+                zh_font_path = Path(zh_font_path_config)
+            else:
+                zh_font_path = self.font_dir / "multi_1_zh.ttf"
+            
+            # 使用配置的字体大小，默认163
+            zh_font_size = self.config.get("zh_font_size", 163)
             
             if zh_font_path.exists():
                 zh_font = ImageFont.truetype(str(zh_font_path), zh_font_size)
@@ -823,8 +841,15 @@ class CoverGeneratorService:
         
         # 如果有英文副标题，才添加英文名文字和色块
         if subtitle:
-            en_font_path = self.font_dir / "multi_1_en.otf"
-            base_font_size = 50  # 默认字体大小
+            # 优先使用用户配置的字体路径，否则使用默认
+            en_font_path_config = self.config.get("en_font_path", "")
+            if en_font_path_config:
+                en_font_path = Path(en_font_path_config)
+            else:
+                en_font_path = self.font_dir / "multi_1_en.otf"
+            
+            # 使用配置的字体大小，默认50
+            base_font_size = self.config.get("en_font_size", 50)
             line_spacing = base_font_size * 0.1
             
             # 根据单词数量或最长单词长度调整字体大小
@@ -858,6 +883,7 @@ class CoverGeneratorService:
             
             # 绘制色块
             result = self._draw_color_block(result, color_block_position, color_block_size, random_color)
+
         
         # 转换为字节
         output = io.BytesIO()

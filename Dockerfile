@@ -62,6 +62,9 @@ COPY --from=frontend-builder /app/frontend/dist /app/frontend
 # 创建数据目录（用于存储webhook配置）
 RUN mkdir -p /data && chmod 777 /data
 
+# 创建config目录（用于存储用户自定义字体和配置）
+RUN mkdir -p /config/fonts && chmod -R 777 /config
+
 # 暴露端口
 EXPOSE 8000
 

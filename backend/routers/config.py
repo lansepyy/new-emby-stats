@@ -78,6 +78,10 @@ class CoverConfig(BaseModel):
     font_size_ratio: float = 0.12
     date_font_size_ratio: float = 0.05
     font_family: str = "SourceHanSansCN-Bold.otf"
+    zh_font_path: str = ""
+    en_font_path: str = ""
+    zh_font_size: int = 163
+    en_font_size: int = 50
     is_animated: bool = False
     frame_count: int = 60
     frame_duration: int = 50
@@ -113,6 +117,42 @@ async def update_cover_config(cover_config: CoverConfig):
     try:
         config_storage.update_section("cover", cover_config.dict())
         return {"success": True, "message": "封面配置已保存"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/fonts")
+async def list_fonts():
+    """列出可用的字体文件"""
+    try:
+        # 支持的字体后缀
+        font_extensions = {'.ttf', '.otf', '.woff', '.woff2'}
+        
+        font_dirs = [
+            "/config/fonts",  # 用户自定义字体目录
+            "/app/res/fonts"  # 系统内置字体目录
+        ]
+        
+        fonts = []
+        for font_dir in font_dirs:
+            if not os.path.exists(font_dir):
+                continue
+            
+            try:
+                for filename in os.listdir(font_dir):
+                    file_path = os.path.join(font_dir, filename)
+                    if os.path.isfile(file_path):
+                        _, ext = os.path.splitext(filename)
+                        if ext.lower() in font_extensions:
+                            fonts.append({
+                                "name": filename,
+                                "path": file_path,
+                                "dir": "custom" if font_dir == "/config/fonts" else "builtin"
+                            })
+            except Exception as e:
+                print(f"读取字体目录 {font_dir} 失败: {e}")
+        
+        return {"fonts": fonts}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
