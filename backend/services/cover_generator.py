@@ -324,7 +324,11 @@ class CoverGeneratorService:
         canvas: Image.Image,
         title: str,
         subtitle: str = "",
-        color: tuple = (100, 150, 200, 255)
+        color: tuple = (100, 150, 200, 255),
+        zh_font_path: Optional[str] = None,
+        en_font_path: Optional[str] = None,
+        zh_font_size: Optional[int] = None,
+        en_font_size: Optional[int] = None
     ) -> Image.Image:
         """在画布左侧添加标题叠加层
         
@@ -333,43 +337,47 @@ class CoverGeneratorService:
             title: 主标题(中文)
             subtitle: 副标题(英文)  
             color: 色块颜色 RGBA
+            zh_font_path: 中文字体路径（可选，优先使用）
+            en_font_path: 英文字体路径（可选，优先使用）
+            zh_font_size: 中文字体大小（可选，优先使用）
+            en_font_size: 英文字体大小（可选，优先使用）
             
         Returns:
             添加了标题的画布
         """
         draw = ImageDraw.Draw(canvas)
         
-        # 加载字体（优先使用配置的字体，否则使用默认）
-        zh_font_path_config = self.config.get("zh_font_path", "")
-        if zh_font_path_config:
-            zh_font_path = Path(zh_font_path_config)
+        # 加载字体（优先使用参数传递的字体，其次使用配置，最后使用默认）
+        zh_font_path_str = zh_font_path or self.config.get("zh_font_path", "")
+        if zh_font_path_str:
+            zh_font_path_obj = Path(zh_font_path_str)
         else:
-            zh_font_path = self.font_dir / "multi_1_zh.ttf"
+            zh_font_path_obj = self.font_dir / "multi_1_zh.ttf"
             
-        en_font_path_config = self.config.get("en_font_path", "")
-        if en_font_path_config:
-            en_font_path = Path(en_font_path_config)
+        en_font_path_str = en_font_path or self.config.get("en_font_path", "")
+        if en_font_path_str:
+            en_font_path_obj = Path(en_font_path_str)
         else:
-            en_font_path = self.font_dir / "multi_1_en.otf"
+            en_font_path_obj = self.font_dir / "multi_1_en.otf"
         
-        logger.info(f"动图标题字体路径: 中文={zh_font_path}, 英文={en_font_path}")
+        logger.info(f"动图标题字体路径: 中文={zh_font_path_obj}, 英文={en_font_path_obj}")
         
-        # 中文标题字体（使用配置的字体大小，默认163px）
-        zh_font_size = self.config.get("zh_font_size", 163)
-        if zh_font_path.exists():
-            title_font = ImageFont.truetype(str(zh_font_path), zh_font_size)
-            logger.info(f"动图中文字体加载成功")
+        # 中文标题字体（优先使用参数传递的字体大小，其次使用配置，默认163px）
+        zh_size = zh_font_size or self.config.get("zh_font_size", 163)
+        if zh_font_path_obj.exists():
+            title_font = ImageFont.truetype(str(zh_font_path_obj), zh_size)
+            logger.info(f"动图中文字体加载成功，大小: {zh_size}")
         else:
-            logger.warning(f"中文字体不存在: {zh_font_path}, 使用默认字体")
+            logger.warning(f"中文字体不存在: {zh_font_path_obj}, 使用默认字体")
             title_font = ImageFont.load_default()
         
-        # 英文副标题字体（使用配置的字体大小，默认50px）
-        en_font_size = self.config.get("en_font_size", 50)
-        if en_font_path.exists():
-            subtitle_font = ImageFont.truetype(str(en_font_path), en_font_size)
-            logger.info(f"动图英文字体加载成功")
+        # 英文副标题字体（优先使用参数传递的字体大小，其次使用配置，默认50px）
+        en_size = en_font_size or self.config.get("en_font_size", 50)
+        if en_font_path_obj.exists():
+            subtitle_font = ImageFont.truetype(str(en_font_path_obj), en_size)
+            logger.info(f"动图英文字体加载成功，大小: {en_size}")
         else:
-            logger.warning(f"英文字体不存在: {en_font_path}, 使用默认字体")
+            logger.warning(f"英文字体不存在: {en_font_path_obj}, 使用默认字体")
             subtitle_font = ImageFont.load_default()
         
         # 色块位置和大小 (84, 620, 22x65)
@@ -1650,6 +1658,10 @@ class CoverGeneratorService:
         use_macaron: bool = True,
         use_film_grain: bool = True,
         poster_count: int = 9,
+        zh_font_path: Optional[str] = None,
+        en_font_path: Optional[str] = None,
+        zh_font_size: Optional[int] = None,
+        en_font_size: Optional[int] = None,
         **kwargs
     ) -> bytes:
         """
@@ -1658,6 +1670,8 @@ class CoverGeneratorService:
         Args:
             library_id: 媒体库ID
             library_name: 媒体库名称
+            title: 中文标题
+            subtitle: 英文副标题
             style: 风格（目前仅支持 multi_1）
             frame_count: 帧数
             frame_duration: 帧间隔（毫秒）
@@ -1666,11 +1680,16 @@ class CoverGeneratorService:
             use_macaron: 是否使用马卡龙配色
             use_film_grain: 是否添加胶片颗粒
             poster_count: 海报数量
+            zh_font_path: 中文字体路径
+            en_font_path: 英文字体路径
+            zh_font_size: 中文字体大小
+            en_font_size: 英文字体大小
             
         Returns:
             动画文件的字节数据
         """
         logger.info(f"开始生成动画封面: {library_name}, 帧数: {frame_count}")
+        logger.info(f"字体配置: zh_size={zh_font_size}, en_size={en_font_size}")
         
         # 获取海报图片
         posters = await self._fetch_posters(library_id, count=poster_count)
@@ -1729,7 +1748,16 @@ class CoverGeneratorService:
             if use_title and (title or subtitle):
                 # 提取色块颜色
                 random_color = (macaron_colors[0][0], macaron_colors[0][1], macaron_colors[0][2], 255) if macaron_colors else (100, 150, 200, 255)
-                frame_with_bg = self._add_title_overlay(frame_with_bg, title or library_name, subtitle, random_color)
+                frame_with_bg = self._add_title_overlay(
+                    frame_with_bg, 
+                    title or library_name, 
+                    subtitle, 
+                    random_color,
+                    zh_font_path=zh_font_path,
+                    en_font_path=en_font_path,
+                    zh_font_size=zh_font_size,
+                    en_font_size=en_font_size
+                )
             
             # 添加胶片颗粒
             if use_film_grain:

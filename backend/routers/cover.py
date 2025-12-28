@@ -31,6 +31,11 @@ class GenerateCoverRequest(BaseModel):
     color_ratio: float = 0.7
     font_size_ratio: float = 0.12
     date_font_size_ratio: float = 0.05
+    # 字体配置
+    zh_font_path: Optional[str] = None
+    en_font_path: Optional[str] = None
+    zh_font_size: Optional[int] = None
+    en_font_size: Optional[int] = None
     # 动画相关参数
     is_animated: bool = False
     frame_count: int = 30
@@ -78,7 +83,11 @@ async def generate_cover(request: GenerateCoverRequest):
                 use_title=request.use_title,
                 use_macaron=request.use_macaron,
                 use_film_grain=request.use_film_grain,
-                poster_count=request.poster_count
+                poster_count=request.poster_count,
+                zh_font_path=request.zh_font_path,
+                en_font_path=request.en_font_path,
+                zh_font_size=request.zh_font_size,
+                en_font_size=request.en_font_size
             )
             
             # 根据输出格式设置 content_type
@@ -205,7 +214,11 @@ async def upload_cover_to_emby(
                 use_title=request.use_title,
                 use_macaron=request.use_macaron,
                 use_film_grain=request.use_film_grain,
-                poster_count=request.poster_count
+                poster_count=request.poster_count,
+                zh_font_path=request.zh_font_path,
+                en_font_path=request.en_font_path,
+                zh_font_size=request.zh_font_size,
+                en_font_size=request.en_font_size
             )
         elif request.style == "multi_1":
             # 多图拼贴风格
@@ -219,16 +232,27 @@ async def upload_cover_to_emby(
                 blur_size=request.blur_size,
                 color_ratio=request.color_ratio
             )
-        else:
-            # 单图马卡龙风格
+        elif request.style == "single_1":
+            # 单图风格1 - 卡片旋转
             image_data = await cover_service.generate_style_single(
                 library_id=request.library_id,
                 library_name=request.library_name,
                 title=request.title,
+                subtitle=request.subtitle,
                 use_film_grain=request.use_film_grain,
                 blur_size=request.blur_size,
                 color_ratio=request.color_ratio
             )
+        elif request.style == "single_2":
+            # 单图风格2 - 斜线分割
+            image_data = await cover_service.generate_style_single_2(
+                library_id=request.library_id,
+                library_name=request.library_name,
+                title=request.title,
+                subtitle=request.subtitle
+            )
+        else:
+            raise HTTPException(status_code=400, detail=f"不支持的风格: {request.style}")
         
         if not image_data:
             raise HTTPException(status_code=500, detail="封面生成失败")
