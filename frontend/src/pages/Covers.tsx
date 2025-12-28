@@ -198,11 +198,11 @@ export default function Covers() {
       }
       
       const requestData = {
+        ...config,
         library_id: selectedLibrary,
         library_name: selectedLib?.name || '',
         title: title,
-        subtitle: subtitle,
-        ...config
+        subtitle: subtitle
       }
       
       console.log('🎬 发送封面生成请求:', requestData)
@@ -265,6 +265,11 @@ export default function Covers() {
       let title = selectedLib?.name || ''
       let subtitle = ''
       
+      console.log('🔍 开始解析YAML配置')
+      console.log('  - selectedLib:', selectedLib)
+      console.log('  - config.title_text:', config.title_text)
+      console.log('  - 初始title:', title)
+      
       if (config.title_text && selectedLib?.name) {
         try {
           const lines = config.title_text.split('\n')
@@ -298,15 +303,25 @@ export default function Covers() {
         }
       }
       
+      console.log('📤 上传封面请求数据:', {
+        library_id: selectedLibrary,
+        library_name: selectedLib?.name,
+        title: title,
+        subtitle: subtitle,
+        title_type: typeof title,
+        subtitle_type: typeof subtitle,
+        title_text: config.title_text
+      })
+      
       const uploadResponse = await fetch(`/api/cover/upload/${selectedLibrary}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          ...config,
           library_id: selectedLibrary,
           library_name: selectedLib?.name || '',
           title: title,
-          subtitle: subtitle,
-          ...config
+          subtitle: subtitle
         })
       })
 
