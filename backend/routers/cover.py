@@ -60,58 +60,52 @@ async def generate_cover(request: GenerateCoverRequest):
         logger.info(f"完整请求数据: {request.dict()}")
         logger.info(f"标题信息: title='{request.title}', subtitle='{request.subtitle}'")
         logger.info(f"动画参数: frame_count={request.frame_count}, frame_duration={request.frame_duration}, output_format={request.output_format}")
-        
-        # 检查是否支持动画
-        if request.is_animated and request.style != "multi_1":
-            logger.warning(f"⚠️ {request.style} 风格不支持动画，将生成静态图")
-            request.is_animated = False
-        
         logger.info(f"🔍 判断条件: style={request.style}, is_animated={request.is_animated}, 进入分支: {'动画' if request.is_animated else '静态'}")
         
-        # 根据风格和动画选项决定生成类型
+        # 根据是否启用动画决定生成类型（与upload接口逻辑保持一致）
+        if request.is_animated:
+            # ===== 生成动画版本 =====
+            logger.info("开始生成动画封面...")
+            image_data = await cover_service.generate_animated_cover(
+                library_id=request.library_id,
+                library_name=request.library_name,
+                title=request.title,
+                subtitle=request.subtitle,
+                style=request.style,
+                frame_count=request.frame_count,
+                frame_duration=request.frame_duration,
+                output_format=request.output_format,
+                use_title=request.use_title,
+                use_macaron=request.use_macaron,
+                use_film_grain=request.use_film_grain,
+                poster_count=request.poster_count
+            )
+            
+            # 根据输出格式设置 content_type
+            content_type = f"image/{request.output_format}"
+            logger.info(f"✅ 动画封面生成成功，类型: {content_type}, 大小: {len(image_data)} bytes")
+            return Response(
+                content=image_data,
+                media_type=content_type,
+                headers={
+                    "Content-Disposition": f'inline; filename="cover.{request.output_format}"'
+                }
+            )
+        
+        # ===== 生成静态版本 =====
         if request.style == "multi_1":
-            # 多图拼贴风格
-            if request.is_animated:
-                # 生成动画版本
-                logger.info("开始生成多图动画封面...")
-                image_data = await cover_service.generate_animated_cover(
-                    library_id=request.library_id,
-                    library_name=request.library_name,
-                    title=request.title,
-                    subtitle=request.subtitle,
-                    style=request.style,
-                    frame_count=request.frame_count,
-                    frame_duration=request.frame_duration,
-                    output_format=request.output_format,
-                    use_title=request.use_title,
-                    use_macaron=request.use_macaron,
-                    use_film_grain=request.use_film_grain,
-                    poster_count=request.poster_count
-                )
-                
-                # 根据输出格式设置 content_type
-                content_type = f"image/{request.output_format}"
-                logger.info(f"✅ 动画封面生成成功，类型: {content_type}, 大小: {len(image_data)} bytes")
-                return Response(
-                    content=image_data,
-                    media_type=content_type,
-                    headers={
-                        "Content-Disposition": f'inline; filename="cover.{request.output_format}"'
-                    }
-                )
-            else:
-                # 生成静态版本
-                logger.info("开始生成多图静态封面...")
-                image_data = await cover_service.generate_style_multi(
-                    library_id=request.library_id,
-                    library_name=request.library_name,
-                    title=request.title,
-                    subtitle=request.subtitle,
-                    poster_count=request.poster_count,
-                    use_blur=request.use_blur,
-                    blur_size=request.blur_size,
-                    color_ratio=request.color_ratio
-                )
+            # 多图拼贴风格 - 静态版本
+            logger.info("开始生成多图静态封面...")
+            image_data = await cover_service.generate_style_multi(
+                library_id=request.library_id,
+                library_name=request.library_name,
+                title=request.title,
+                subtitle=request.subtitle,
+                poster_count=request.poster_count,
+                use_blur=request.use_blur,
+                blur_size=request.blur_size,
+                color_ratio=request.color_ratio
+            )
         elif request.style == "single_1":
             # 单图风格1 - 卡片旋转（只支持静态）
             logger.info("开始生成单图风格1封面...")
