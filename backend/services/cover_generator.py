@@ -1686,12 +1686,19 @@ class CoverGeneratorService:
                 colors = find_dominant_macaron_colors(poster, num_colors=2)
                 macaron_colors.extend(colors)
         
-        # 选择背景色
-        bg_color = macaron_colors[0] if macaron_colors else (180, 200, 220)
+        # 生成随机纯色背景（每次都不一样）- 与静态图一致
+        h = random.uniform(0, 1)  # 随机色相
+        s = random.uniform(0.4, 0.7)  # 饱和度范围：中等饱和度
+        l = random.uniform(0.45, 0.65)  # 亮度范围：中等亮度
         
-        # 创建渐变背景 - 增加到高清尺寸
+        r, g, b = colorsys.hls_to_rgb(h, l, s)
+        bg_color = (int(r * 255), int(g * 255), int(b * 255))
+        
+        logger.info(f"动图随机生成背景色: RGB{bg_color}")
+        
+        # 创建纯色背景 - 增加到高清尺寸
         canvas_size = (1920, 1080)  # 提升到 1080P
-        gradient_bg = create_gradient_background(canvas_size[0], canvas_size[1], macaron_colors)
+        solid_bg = Image.new("RGB", canvas_size, bg_color)
         
         # 创建扩展列
         extended_columns = []
@@ -1714,8 +1721,8 @@ class CoverGeneratorService:
                 use_macaron=use_macaron
             )
             
-            # 合成渐变背景
-            frame_with_bg = gradient_bg.copy()
+            # 合成纯色背景
+            frame_with_bg = solid_bg.copy()
             frame_with_bg.paste(frame, (0, 0), frame if frame.mode == 'RGBA' else None)
             
             # 添加标题叠加层(在缩放之前)
