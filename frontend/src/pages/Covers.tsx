@@ -79,7 +79,7 @@ export default function Covers() {
       en_font_size: 50,
       is_animated: false,
       frame_count: 60,
-      frame_duration: 50,
+      frame_duration: 100,
       output_format: 'webp'
     }
   }
@@ -1007,19 +1007,19 @@ export default function Covers() {
                       </label>
                       <input
                         type="range"
-                        min="30"
-                        max="100"
-                        step="10"
+                        min="50"
+                        max="300"
+                        step="25"
                         value={config.frame_duration}
                         onChange={(e: ChangeEvent<HTMLInputElement>) => setConfig({ ...config, frame_duration: parseInt(e.target.value) })}
                         className="w-full h-3 bg-white rounded-lg appearance-none cursor-pointer shadow-inner"
                         style={{
-                          background: `linear-gradient(to right, rgb(20, 184, 166) 0%, rgb(20, 184, 166) ${((config.frame_duration - 30) / 70) * 100}%, #e5e7eb ${((config.frame_duration - 30) / 70) * 100}%, #e5e7eb 100%)`
+                          background: `linear-gradient(to right, rgb(20, 184, 166) 0%, rgb(20, 184, 166) ${((config.frame_duration - 50) / 250) * 100}%, #e5e7eb ${((config.frame_duration - 50) / 250) * 100}%, #e5e7eb 100%)`
                         }}
                       />
                       <div className="flex justify-between text-xs text-gray-500 mt-2">
-                        <span>快速 (30ms)</span>
-                        <span>缓慢 (100ms)</span>
+                        <span>快速 (50ms/20fps)</span>
+                        <span>缓慢 (300ms/3.3fps)</span>
                       </div>
                     </div>
 
